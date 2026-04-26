@@ -1,4 +1,4 @@
-# Easy Cite Generator — TypeScript Full-Stack
+# Outlined — Ref gen
 
 A citation reference generator built **end-to-end in TypeScript**, with the rules transcribed
 directly from RMIT Library's *Easy Cite APA 7th Edition Style Guide*.
