@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Easy Cite Generator · A thoughtful citation companion</title>
+<meta name="description" content="Paste any URL — get a proper academic citation in APA, Harvard, Chicago, IEEE, Vancouver, or AGLC4. Built on the rules from RMIT Easy Cite." />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<!-- ============================== NAV ============================== -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="logo" href="/">
+      <span class="logo-mark" aria-hidden="true">EC</span>
+      <span class="logo-text">Easy Cite</span>
+    </a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#styles">Styles</a>
+      <a href="https://www.lib.rmit.edu.au/easy-cite/" target="_blank" rel="noopener">RMIT source ↗</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================== HERO ============================== -->
+<header class="hero">
+  <div class="hero-inner">
+    <p class="overline">URL → Reference</p>
+    <h1 class="hero-headline">
+      A library of citation rules. <em>One paste away.</em>
+    </h1>
+    <p class="hero-sub">
+      Drop in any public URL. We'll read the page, infer the source type, and hand you back
+      a citation that follows the rules — to the comma, to the italics, to the DOI prefix.
+    </p>
+  </div>
+</header>
+
+<!-- ============================== STYLE PICKER ============================== -->
+<section class="style-section">
+  <div class="container">
+    <p class="section-overline">Choose your style</p>
+    <div class="style-bar" id="styleBar"></div>
+  </div>
+</section>
+
+<!-- ============================== MAIN GRID ============================== -->
+<main class="container main-grid">
+
+  <!-- LEFT: INPUT -->
+  <section class="card">
+    <header class="card-header">
+      <span class="card-num">01</span>
+      <h2 class="card-title">Paste &amp; refine</h2>
+    </header>
+
+    <div class="source-tabs" id="sourceTabs"></div>
+
+    <div class="url-block">
+      <label class="field__label" for="urlInput">URL</label>
+      <div class="url-row">
+        <input
+          type="url"
+          id="urlInput"
+          placeholder="https://www.example.com/article-or-paper"
+          spellcheck="false"
+          autocapitalize="off"
+        />
+        <button type="button" id="fetchBtn" class="btn btn--brand">
+          <span class="btn__label">Auto-fetch</span>
+          <span class="btn__spinner" aria-hidden="true"></span>
+        </button>
+      </div>
+      <p class="field__hint">Public URLs only — internal addresses and private IPs are blocked.</p>
+    </div>
+
+    <div id="statusBox" class="status"></div>
+
+    <div class="form-grid" id="formGrid"></div>
+
+    <div class="card-actions">
+      <button type="button" class="btn btn--text" id="clearBtn">Clear all</button>
+    </div>
+  </section>
+
+  <!-- RIGHT: OUTPUT -->
+  <section class="card card--output">
+    <header class="card-header">
+      <span class="card-num">02</span>
+      <h2 class="card-title">Citation</h2>
+    </header>
+
+    <p class="output-label">Reference list entry</p>
+    <div class="output-block" id="referenceOut">
+      <span class="placeholder">Citation sẽ hiện ở đây sau khi bạn fetch URL hoặc điền thông tin.</span>
+    </div>
+
+    <p class="output-label">In-text — paraphrase</p>
+    <div class="output-block output-block--small" id="intextOut">
+      <span class="placeholder">—</span>
+    </div>
+
+    <p class="output-label">In-text — direct quote</p>
+    <div class="output-block output-block--small" id="quoteOut">
+      <span class="placeholder">—</span>
+    </div>
+
+    <div class="output-actions">
+      <button type="button" class="btn btn--light" id="copyRefBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy reference
+      </button>
+      <button type="button" class="btn btn--text" id="copyIntextBtn">Copy in-text</button>
+    </div>
+
+    <ul class="notes-list" id="notesOut"></ul>
+  </section>
+</main>
+
+<!-- ============================== HOW IT WORKS ============================== -->
+<section id="how" class="how-section">
+  <div class="container">
+    <h2 class="section-title">How a URL becomes a citation</h2>
+    <div class="how-grid">
+      <div class="how-step">
+        <span class="step-num">01</span>
+        <h3 class="step-title">Read the page</h3>
+        <p class="step-text">Backend safely fetches the HTML — with SSRF protection, 8s timeout, 5MB cap.</p>
+      </div>
+      <div class="how-step">
+        <span class="step-num">02</span>
+        <h3 class="step-title">Parse metadata</h3>
+        <p class="step-text">JSON-LD, citation_* tags, Open Graph, Dublin Core, Twitter Cards — in priority order.</p>
+      </div>
+      <div class="how-step">
+        <span class="step-num">03</span>
+        <h3 class="step-title">Guess the source</h3>
+        <p class="step-text">Journal? News article? Blog? The system picks a default, you confirm.</p>
+      </div>
+      <div class="how-step">
+        <span class="step-num">04</span>
+        <h3 class="step-title">Apply the rules</h3>
+        <p class="step-text">RMIT Easy Cite rules — encoded line by line — produce the formatted reference.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== ABOUT ============================== -->
+<section id="styles" class="about-section">
+  <div class="about-inner">
+    <p class="about-overline">Faithful to the source</p>
+    <h2 class="about-headline">Encoded directly from <em>RMIT Easy Cite.</em></h2>
+    <p class="about-text">
+      The APA 7th rules in this generator are transcribed page-by-page from RMIT Library's official
+      Easy Cite guide — author lists for 1, 2, 3-20, and 21+ authors; DOI normalisation; the article-number
+      rule for online journals without page ranges; the omission of publisher when it equals the author;
+      hanging-indent reminders. When the rules are open to interpretation, we follow RMIT's published examples.
+    </p>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <p>Easy Cite Generator · TypeScript full-stack · Built on rules from <a href="https://www.lib.rmit.edu.au/easy-cite/" target="_blank" rel="noopener">RMIT Library Easy Cite</a>.</p>
+  </div>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>
