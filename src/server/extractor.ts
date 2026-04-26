@@ -6,7 +6,7 @@
  *   3. Open Graph (og:*)
  *   4. Twitter Cards
  *   5. Dublin Core (dc.*)
- *   6. Generic <meta name="..."> and fallback to <title>, <h1>
+ *   6. Generic <meta name="..."> and fallback to <h1>, <title>, visible dates
  */
 
 import * as cheerio from 'cheerio';
@@ -130,11 +130,10 @@ function splitName(raw: string): Author {
     const [fam, giv] = s.split(',', 2).map((x) => x.trim());
     return { family: fam, given: giv || '' };
   }
-  // Heuristic for organisations: contains words like "Inc", "Ltd", "University",
-  // "Department", "Bureau", "Institute", or has 4+ words
+  // Heuristic for organisations.
   const orgRegex =
-    /\b(inc\.?|ltd\.?|llc|university|department|bureau|institute|association|society|foundation|federation|ministry|agency|corp\.?|company|group|news|press|times|herald|gazette|tribune|post)\b/i;
-  if (orgRegex.test(s)) return { family: s, given: '', isOrganisation: true };
+    /\b(inc\.?|ltd\.?|llc|university|department|bureau|institute|association|society|foundation|federation|ministry|agency|corp\.?|company|group|news|press|times|herald|gazette|tribune|post|wiki|library|museum|gallery)\b/i;
+  if (orgRegex.test(s) || s.split(/\s+/).length >= 5) return { family: s, given: '', isOrganisation: true };
 
   const parts = s.split(' ');
   if (parts.length === 1) return { family: parts[0], given: '' };
@@ -152,6 +151,81 @@ function abs(maybeRelative: string, base: string): string {
   }
 }
 
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+function isWikiLikeHost(host: string): boolean {
+  return /(^|\.)fandom\.com$|(^|\.)wikipedia\.org$|(^|\.)wiktionary\.org$|(^|\.)wikiquote\.org$/i.test(host);
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function cleanTitle(rawTitle: string, siteName: string, baseUrl: string): string {
+  let title = rawTitle.replace(/\s+/g, ' ').trim();
+  if (!title) return '';
+  const host = hostnameOf(baseUrl);
+
+  // Fandom/Wiki pages often expose titles like "Pretender | TYPE-MOON Wiki | Fandom".
+  // APA needs the entry/page title only, not the container/site suffix.
+  if (isWikiLikeHost(host) && title.includes('|')) {
+    return title.split('|')[0].trim();
+  }
+
+  const site = siteName.trim();
+  if (site) {
+    title = title.replace(new RegExp(`\\s*[|–—-]\\s*${escapeRegExp(site)}\\s*$`, 'i'), '').trim();
+  }
+  title = title.replace(/\s*[|–—-]\s*Fandom\s*$/i, '').trim();
+  return title;
+}
+
+function cleanCanonicalUrl(rawUrl: string, baseUrl: string): string {
+  const u = abs(rawUrl, baseUrl);
+  if (!u) return '';
+  try {
+    const parsed = new URL(u);
+    for (const key of Array.from(parsed.searchParams.keys())) {
+      if (/^(utm_|fbclid$|gclid$|srsltid$|mc_cid$|mc_eid$)/i.test(key)) {
+        parsed.searchParams.delete(key);
+      }
+    }
+    parsed.hash = '';
+    return parsed.toString();
+  } catch {
+    return u;
+  }
+}
+
+function visibleDateText($: CheerioAPI): string {
+  const text = $('body').text().replace(/\s+/g, ' ').trim();
+  const patterns = [
+    /(?:Cập\s*nhật\s*lần\s*cuối|Cập\s*nhật|Ngày\s*đăng|Đăng\s*ngày|Xuất\s*bản|Published|Updated|Last\s*updated)\s*:?\s*(\d{1,2}[\/-]\d{1,2}[\/-](?:19|20)\d{2})/i,
+    /(?:Cập\s*nhật\s*lần\s*cuối|Cập\s*nhật|Ngày\s*đăng|Đăng\s*ngày|Xuất\s*bản|Published|Updated|Last\s*updated)\s*:?\s*((?:19|20)\d{2}[\/-]\d{1,2}[\/-]\d{1,2})/i,
+  ];
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (m?.[1]) return m[1];
+  }
+  return '';
+}
+
+function shouldIgnoreAuthor(raw: string): boolean {
+  const s = raw.trim();
+  if (!s) return true;
+  if (/^https?:/i.test(s)) return true;
+  if (/contributors?\s+to/i.test(s)) return true;
+  if (/^(wiki|fandom|admin|administrator|staff|editorial team)$/i.test(s)) return true;
+  if (/^by\s*$/i.test(s)) return true;
+  return false;
+}
+
 /** Pull authors from various sources */
 function extractAuthors($: CheerioAPI, jsonld: ReturnType<typeof parseJsonLd>): Author[] {
   const seen = new Set<string>();
@@ -159,7 +233,7 @@ function extractAuthors($: CheerioAPI, jsonld: ReturnType<typeof parseJsonLd>): 
   const add = (raw: string): void => {
     const cleaned = raw.trim();
     if (!cleaned || cleaned.length < 2) return;
-    if (cleaned.startsWith('http')) return;
+    if (shouldIgnoreAuthor(cleaned)) return;
     const key = cleaned.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
@@ -180,9 +254,7 @@ function extractAuthors($: CheerioAPI, jsonld: ReturnType<typeof parseJsonLd>): 
   }
 
   // 3. article:author (Open Graph)
-  metaContentAll($, 'meta[property="article:author"]').forEach((a) => {
-    if (!a.startsWith('http')) add(a);
-  });
+  metaContentAll($, 'meta[property="article:author"]').forEach(add);
 
   // 4. classic meta author
   if (out.length === 0) {
@@ -194,8 +266,9 @@ function extractAuthors($: CheerioAPI, jsonld: ReturnType<typeof parseJsonLd>): 
       'meta[name="sailthru.author"]',
     ]);
     if (a) {
-      // Some sites stuff multiple authors into one tag, separated by ", " or " and "
-      a.split(/,\s*| and /i).forEach(add);
+      // Safe delimiters first. Avoid splitting "Family, Given" unless the tag clearly contains multiple authors.
+      if (/[;|\n]/.test(a)) a.split(/\s*(?:;|\||\n)\s*/).forEach(add);
+      else add(a);
     }
   }
 
@@ -205,12 +278,30 @@ function extractAuthors($: CheerioAPI, jsonld: ReturnType<typeof parseJsonLd>): 
 /** Parse a date-like string into year/month/day (English month names) */
 function splitDate(raw: string): { year: string; month: string; day: string } {
   if (!raw) return { year: '', month: '', day: '' };
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  const numeric = raw.trim().match(/^(\d{1,4})[\/-](\d{1,2})[\/-](\d{1,4})/);
+  if (numeric) {
+    let day = Number(numeric[1]);
+    let month = Number(numeric[2]);
+    let year = Number(numeric[3]);
+    // yyyy-mm-dd
+    if (String(numeric[1]).length === 4) {
+      year = Number(numeric[1]);
+      month = Number(numeric[2]);
+      day = Number(numeric[3]);
+    }
+    // dd/mm/yyyy is common on Vietnamese/Australian sites.
+    if (year >= 1900 && year <= 2099 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return { year: String(year), month: months[month - 1], day: String(day) };
+    }
+  }
+
   const d = new Date(raw);
   if (!isNaN(d.getTime())) {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
-    ];
     return {
       year: String(d.getFullYear()),
       month: months[d.getMonth()],
@@ -227,11 +318,12 @@ function guessType(
   jsonld: ReturnType<typeof parseJsonLd>,
   baseUrl: string
 ): SourceType {
+  const host = hostnameOf(baseUrl);
+
   // Strong signals first
-  if (
-    metaContent($, ['meta[name="citation_journal_title"]', 'meta[name="prism.publicationName"]'])
-  )
+  if (metaContent($, ['meta[name="citation_journal_title"]', 'meta[name="prism.publicationName"]'])) {
     return 'journal';
+  }
   if (metaContent($, ['meta[name="citation_doi"]'])) return 'journal';
   if (jsonld.newsArticle) return 'newspaper-online';
   if (jsonld.article) {
@@ -243,24 +335,24 @@ function guessType(
   if (jsonld.book) return 'book';
 
   // Hostname-based heuristics
-  try {
-    const host = new URL(baseUrl).hostname;
-    if (/twitter\.com|x\.com/.test(host)) return 'social-twitter';
-    if (/facebook\.com/.test(host)) return 'social-facebook';
-    if (/instagram\.com/.test(host)) return 'social-instagram';
-    if (/medium\.com|substack\.com|wordpress\.com|blogspot\./.test(host)) return 'blog-post';
-    if (/(news|times|guardian|herald|post|tribune|nytimes|bbc|cnn|reuters|smh|theage)/i.test(host))
-      return 'newspaper-online';
-  } catch {
-    /* ignore */
+  if (isWikiLikeHost(host)) return 'wiki-entry';
+  if (/youtube\.com|youtu\.be/.test(host)) return 'youtube-video';
+  if (/twitter\.com|x\.com/.test(host)) return 'social-twitter';
+  if (/facebook\.com/.test(host)) return 'social-facebook';
+  if (/instagram\.com/.test(host)) return 'social-instagram';
+  if (/tiktok\.com/.test(host)) return 'social-tiktok';
+  if (/medium\.com|substack\.com|wordpress\.com|blogspot\./.test(host)) return 'blog-post';
+  if (/(news|times|guardian|herald|post|tribune|nytimes|bbc|cnn|reuters|smh|theage)/i.test(host)) {
+    return 'newspaper-online';
   }
 
-  // og:type
+  // og:type=article is common for normal website articles; do not force it to newspaper.
   const og = metaContent($, ['meta[property="og:type"]']);
-  if (/article/i.test(og)) return 'newspaper-online';
   if (/book/i.test(og)) return 'book';
+  if (/video/i.test(og)) return 'streaming-video';
+  if (/article/i.test(og)) return 'webpage';
 
-  // PDF reports
+  // PDF reports / webpage documents
   if (/\.pdf(\?|$)/i.test(baseUrl)) return 'report';
 
   return 'webpage';
@@ -274,30 +366,35 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
   const data = emptyCitationData() as Partial<CitationData>;
 
   // Title
-  data.title = pickFirst(
+  const rawTitle = pickFirst(
     metaContent($, ['meta[property="og:title"]']),
     metaContent($, ['meta[name="twitter:title"]']),
     metaContent($, ['meta[name="citation_title"]']),
     jsonld.newsArticle?.headline,
     jsonld.article?.headline,
     metaContent($, ['meta[name="dc.title"]', 'meta[name="DC.title"]']),
-    $('title').first().text(),
-    $('h1').first().text()
+    $('h1').first().text(),
+    $('title').first().text()
   ).replace(/\s+/g, ' ');
 
   // Site name / publisher
-  let host = '';
-  try {
-    host = new URL(baseUrl).hostname.replace(/^www\./, '');
-  } catch {
-    /* ignore */
-  }
+  const host = hostnameOf(baseUrl);
   data.siteName = pickFirst(
     metaContent($, ['meta[property="og:site_name"]']),
     jsonld.website?.name,
     metaContent($, ['meta[name="application-name"]']),
     host
   );
+
+  // Fandom pages sometimes expose site_name as "Fandom" even though the actual
+  // reference-work title is the middle segment, e.g. "TYPE-MOON Wiki".
+  if (isWikiLikeHost(host) && rawTitle.includes('|')) {
+    const bits = rawTitle.split('|').map((x) => x.trim()).filter(Boolean);
+    const wikiName = bits.find((x) => /wiki/i.test(x) && !/^fandom$/i.test(x));
+    if (wikiName) data.siteName = wikiName;
+  }
+
+  data.title = cleanTitle(rawTitle, data.siteName || '', baseUrl);
 
   // For news, publisher = newspaper masthead (often == site name)
   data.publisher = pickFirst(
@@ -307,7 +404,7 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
     data.siteName
   );
 
-  // Date
+  // Date: published date first, modified/visible last-updated as fallback.
   const dateRaw = pickFirst(
     metaContent($, ['meta[property="article:published_time"]']),
     metaContent($, ['meta[name="article:published_time"]']),
@@ -323,7 +420,11 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
       'meta[name="DC.date.issued"]',
       'meta[name="parsely-pub-date"]',
     ]),
-    $('time[datetime]').first().attr('datetime')
+    $('time[datetime]').first().attr('datetime'),
+    metaContent($, ['meta[property="article:modified_time"]', 'meta[name="dateModified"]']),
+    jsonld.newsArticle?.dateModified,
+    jsonld.article?.dateModified,
+    visibleDateText($)
   );
   if (dateRaw) {
     const { year, month, day } = splitDate(dateRaw);
@@ -334,7 +435,6 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
 
   // Authors
   data.authors = extractAuthors($, jsonld);
-  if (!data.authors.length) data.authors = [{ family: '', given: '' }];
 
   // URL & canonical
   data.url = pickFirst(
@@ -342,7 +442,7 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
     $('link[rel="canonical"]').attr('href'),
     baseUrl
   );
-  if (data.url) data.url = abs(data.url, baseUrl);
+  if (data.url) data.url = cleanCanonicalUrl(data.url, baseUrl);
 
   // Journal-specific (citation_* tags are gold)
   data.journal = metaContent($, [
@@ -361,6 +461,18 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
   ])
     .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')
     .replace(/^doi:\s*/i, '');
+  data.articleNumber = metaContent($, [
+    'meta[name="citation_article_number"]',
+    'meta[name="citation_arxiv_id"]',
+    'meta[name="prism.articleIdentifier"]',
+  ]);
+
+  // Platform defaults for social/video pages.
+  if (/youtube\.com|youtu\.be/.test(host)) data.platform = 'YouTube';
+  else if (/tiktok\.com/.test(host)) data.platform = 'TikTok';
+  else if (/instagram\.com/.test(host)) data.platform = 'Instagram';
+  else if (/twitter\.com|x\.com/.test(host)) data.platform = 'X';
+  else if (/facebook\.com/.test(host)) data.platform = 'Facebook';
 
   // Today's date as default access date
   const now = new Date();
@@ -368,7 +480,7 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
   ];
-  data.accessDate = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  data.accessDate = `${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
 
   const guessedType = guessType($, jsonld, baseUrl);
 

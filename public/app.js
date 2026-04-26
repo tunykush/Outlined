@@ -48,61 +48,124 @@
 
   // src/client/form-schemas.ts
   var F = {
-    year: { key: "year", label: "Year", placeholder: "2024", hint: "Use n.d. if unknown" },
-    month: { key: "month", label: "Month", placeholder: "March", hint: "Full English name" },
+    year: { key: "year", label: "Year", placeholder: "2024 or n.d.", hint: "Use n.d. if no date is available" },
+    month: { key: "month", label: "Month", placeholder: "March", hint: "Full English month name" },
     day: { key: "day", label: "Day", placeholder: "15", type: "number" },
-    title: { key: "title", label: "Title", placeholder: "The article or page title", full: true },
+    title: { key: "title", label: "Title / content", placeholder: "Article, page, post, video, book, or source title", full: true },
     url: { key: "url", label: "URL", placeholder: "https://...", type: "url", full: true },
     accessDate: { key: "accessDate", label: "Date accessed", placeholder: "15 March 2024" },
-    siteName: { key: "siteName", label: "Website name", placeholder: "BBC News" },
-    publisher: { key: "publisher", label: "Publisher", placeholder: "The Sydney Morning Herald" },
+    quotePage: { key: "quotePage", label: "Quote page", placeholder: "12", hint: "For direct quote output only" },
+    quotePages: { key: "quotePages", label: "Quote page range", placeholder: "23-24" },
+    quoteSection: { key: "quoteSection", label: "Quote section", placeholder: "Discussion", hint: "Use when no page number exists" },
+    quoteParagraph: { key: "quoteParagraph", label: "Quote paragraph", placeholder: "3", hint: "Use with section when no page number exists" },
+    timestamp: { key: "timestamp", label: "Timestamp", placeholder: "00:27 or 22:59", hint: "For audio/video quotes" },
+    siteName: { key: "siteName", label: "Website name / platform", placeholder: "BBC / Canvas@RMIT University / YouTube" },
+    publisher: { key: "publisher", label: "Publisher / newspaper / production company", placeholder: "The Sydney Morning Herald / Routledge" },
     journal: { key: "journal", label: "Journal name", placeholder: "Nature" },
     volume: { key: "volume", label: "Volume", placeholder: "42" },
     issue: { key: "issue", label: "Issue", placeholder: "3" },
-    pages: { key: "pages", label: "Pages", placeholder: "183-206" },
-    articleNumber: { key: "articleNumber", label: "Article number", placeholder: "e70070", hint: "For online articles without page range" },
+    pages: { key: "pages", label: "Reference page range", placeholder: "183-206", hint: "For the source/reference entry, not necessarily the quoted page" },
+    articleNumber: { key: "articleNumber", label: "Article number", placeholder: "e70070", hint: "For online journal articles without page range" },
     doi: { key: "doi", label: "DOI", placeholder: "10.1038/..." },
     edition: { key: "edition", label: "Edition", placeholder: "2nd", hint: "Leave blank for 1st edition" },
-    place: { key: "place", label: "Place of publication", placeholder: "Melbourne" },
-    bookTitle: { key: "bookTitle", label: "Book title", placeholder: "The Handbook of...", full: true },
+    place: { key: "place", label: "Place of publication", placeholder: "Melbourne", hint: "Only used by non-APA fallback styles" },
+    bookTitle: { key: "bookTitle", label: "Book / series title", placeholder: "Chronic illness: Impact and interventions", full: true },
+    editorsText: { key: "editorsText", label: "Editors", placeholder: "Lubkin, I. M.; Larsen, P. D.", hint: "Separate multiple editors with semicolons", full: true },
+    translatorsText: { key: "translatorsText", label: "Translator(s)", placeholder: "Tomlinson, J.; Tomlinson, A.", hint: "Separate multiple translators with semicolons", full: true },
+    originalYear: { key: "originalYear", label: "Original year", placeholder: "1929" },
     username: { key: "username", label: "Username / handle", placeholder: "@BarackObama" },
-    platform: { key: "platform", label: "Platform", placeholder: "X / Twitter / TikTok" },
-    reportNumber: { key: "reportNumber", label: "Report number", placeholder: "Cat. No. HSE 176" }
+    platform: { key: "platform", label: "Platform / source name", placeholder: "X / Instagram / TikTok / YouTube / Canvas@RMIT" },
+    description: { key: "description", label: "Description in brackets", placeholder: "Image attached / Photograph / Video / Director", hint: "Do not type square brackets" },
+    postType: { key: "postType", label: "Post type", placeholder: "Post / Tweet / Status update", hint: "Do not type square brackets" },
+    format: { key: "format", label: "Format description", placeholder: "PowerPoint slides / Practical manual / Doctoral dissertation", hint: "Do not type square brackets" },
+    seriesTitle: { key: "seriesTitle", label: "Series title", placeholder: "The Rehearsal", full: true },
+    season: { key: "season", label: "Season", placeholder: "1" },
+    episode: { key: "episode", label: "Episode", placeholder: "1" },
+    productionCompanies: { key: "productionCompanies", label: "Production company/-ies", placeholder: "HBO; Film4 Productions", full: true },
+    writersText: { key: "writersText", label: "Writer(s)", placeholder: "Kemper, C.; Notarnicola, E.", hint: "Separate multiple writers with semicolons", full: true },
+    directorsText: { key: "directorsText", label: "Director(s)", placeholder: "Fielder, N.", hint: "Separate multiple directors with semicolons", full: true },
+    producersText: { key: "producersText", label: "Executive producer(s)", placeholder: "Fielder, N.; Smith, C.", hint: "Separate multiple producers with semicolons", full: true },
+    hostRole: { key: "hostRole", label: "Contributor role", placeholder: "Host / Director / Producer / Executive Producer" },
+    reportNumber: { key: "reportNumber", label: "Report number", placeholder: "Health services series No. 71, Cat. No. HSE 176", full: true },
+    institution: { key: "institution", label: "Institution", placeholder: "RMIT University" },
+    repository: { key: "repository", label: "Repository / database", placeholder: "RMIT Research Repository" },
+    jurisdiction: { key: "jurisdiction", label: "Jurisdiction", placeholder: "Vic / Cth / UK" },
+    section: { key: "section", label: "Section", placeholder: "115.1" },
+    reporter: { key: "reporter", label: "Reporter abbreviation", placeholder: "AAR" },
+    volumeLegal: { key: "volumeLegal", label: "Legal volume", placeholder: "56" },
+    startingPage: { key: "startingPage", label: "Starting page", placeholder: "227" },
+    appendix: { key: "appendix", label: "Appendix note", placeholder: "https://val.rmit.edu.au/. See Appendix A for prompt and output", full: true },
+    toolName: { key: "toolName", label: "AI tool/model", placeholder: "ChatGPT / Val OpenAI GPT-4.1" }
   };
+  var QUOTE_FIELDS = [F.quotePage, F.quotePages, F.quoteSection, F.quoteParagraph];
+  var URL_FIELD = [F.url];
   var FORM_SCHEMAS = {
-    webpage: [F.year, F.month, F.day, F.title, F.siteName, F.url, F.accessDate],
-    "newspaper-online": [F.year, F.month, F.day, F.title, F.publisher, F.url],
-    "newspaper-print": [F.year, F.month, F.day, F.title, F.publisher, F.pages],
-    journal: [F.year, F.title, F.journal, F.volume, F.issue, F.pages, F.articleNumber, F.doi, F.url],
-    book: [F.year, F.title, F.edition, F.publisher, F.place, F.doi, F.url],
-    "book-chapter": [F.year, F.title, F.bookTitle, F.edition, F.pages, F.publisher],
-    report: [F.year, F.title, F.reportNumber, F.publisher, F.url],
-    "blog-post": [F.year, F.month, F.day, F.title, F.siteName, F.url],
-    "social-twitter": [F.year, F.month, F.day, F.title, F.username, F.url],
-    "social-facebook": [F.year, F.month, F.day, F.title, F.url],
-    "social-instagram": [F.year, F.month, F.day, F.title, F.username, F.url]
+    webpage: [F.year, F.month, F.day, F.title, F.siteName, F.url, ...QUOTE_FIELDS],
+    "wiki-entry": [F.year, F.month, F.day, F.title, F.siteName, F.url, ...QUOTE_FIELDS],
+    "webpage-document": [F.year, F.title, F.siteName, F.url, ...QUOTE_FIELDS],
+    "newspaper-online": [F.year, F.month, F.day, F.title, F.publisher, F.url, ...QUOTE_FIELDS],
+    "newspaper-print": [F.year, F.month, F.day, F.title, F.publisher, F.pages, ...QUOTE_FIELDS],
+    journal: [F.year, F.title, F.journal, F.volume, F.issue, F.pages, F.articleNumber, F.doi, F.url, ...QUOTE_FIELDS],
+    book: [F.year, F.title, F.edition, F.publisher, F.place, F.doi, F.url, ...QUOTE_FIELDS],
+    "translated-book": [F.year, F.title, F.translatorsText, F.publisher, F.originalYear, F.doi, F.url, ...QUOTE_FIELDS],
+    "book-chapter": [F.year, F.title, F.bookTitle, F.editorsText, F.edition, F.pages, F.publisher, F.doi, F.url, ...QUOTE_FIELDS],
+    report: [F.year, F.title, F.reportNumber, F.publisher, F.url, ...QUOTE_FIELDS],
+    "blog-post": [F.year, F.month, F.day, F.title, F.siteName, F.url, F.quoteParagraph],
+    "social-twitter": [F.year, F.month, F.day, F.title, F.username, F.description, F.postType, F.platform, F.url],
+    "social-facebook": [F.year, F.month, F.day, F.title, F.description, F.postType, F.platform, F.url],
+    "social-instagram": [F.year, F.month, F.day, F.title, F.username, F.description, F.postType, F.platform, F.url],
+    "social-tiktok": [F.year, F.month, F.day, F.title, F.username, F.description, F.postType, F.platform, F.url],
+    "youtube-video": [F.year, F.month, F.day, F.title, F.platform, F.url, F.timestamp],
+    film: [F.year, F.title, F.hostRole, F.productionCompanies, F.timestamp],
+    podcast: [F.year, F.month, F.day, F.title, F.hostRole, F.publisher, F.url, F.timestamp],
+    "streaming-video": [F.year, F.month, F.day, F.title, F.hostRole, F.publisher, F.platform, F.url, F.timestamp],
+    "tv-series": [F.year, F.title, F.hostRole, F.productionCompanies, F.timestamp],
+    "tv-episode": [F.year, F.month, F.day, F.title, F.season, F.episode, F.seriesTitle, F.writersText, F.directorsText, F.producersText, F.productionCompanies, F.timestamp],
+    image: [F.year, F.month, F.day, F.title, F.description, F.publisher, F.url, ...QUOTE_FIELDS],
+    "lecture-recording": [F.year, F.month, F.day, F.title, F.format, F.platform, F.url, F.timestamp],
+    "powerpoint-slides": [F.year, F.title, F.format, F.platform, F.url, ...QUOTE_FIELDS],
+    "lab-manual": [F.year, F.title, F.format, F.platform, F.url, ...QUOTE_FIELDS],
+    thesis: [F.year, F.title, F.format, F.institution, F.repository, F.url, ...QUOTE_FIELDS],
+    "legal-act": [F.year, F.title, F.jurisdiction, F.section, F.url],
+    "legal-case": [F.year, F.title, F.volumeLegal, F.reporter, F.startingPage, F.url, ...QUOTE_FIELDS],
+    "personal-communication": [F.year, F.month, F.day],
+    "ai-chat": [F.year, F.month, F.day, F.title, F.toolName, F.url, F.appendix]
   };
   var SOURCE_TYPE_LABELS = {
     webpage: "Webpage",
+    "wiki-entry": "Wiki / webpage article",
+    "webpage-document": "Webpage document / PDF",
     "newspaper-online": "News (online)",
     "newspaper-print": "News (print)",
     journal: "Journal article",
     book: "Book / E-book",
+    "translated-book": "Translated book",
     "book-chapter": "Book chapter",
-    report: "Report / PDF",
+    report: "Report",
     "blog-post": "Blog post",
     "social-twitter": "X (Twitter)",
     "social-facebook": "Facebook",
-    "social-instagram": "Instagram"
+    "social-instagram": "Instagram",
+    "social-tiktok": "TikTok",
+    "youtube-video": "YouTube video",
+    film: "Film / movie",
+    podcast: "Podcast",
+    "streaming-video": "Streaming video",
+    "tv-series": "TV series",
+    "tv-episode": "TV episode",
+    image: "Image / table",
+    "lecture-recording": "Lecture recording",
+    "powerpoint-slides": "PowerPoint slides",
+    "lab-manual": "Practical / lab manual",
+    thesis: "Thesis / dissertation",
+    "legal-act": "Act of Parliament",
+    "legal-case": "Legal case",
+    "personal-communication": "Personal communication",
+    "ai-chat": "AI-generated chat"
   };
   var STYLE_LABELS = {
     apa7: "APA 7th",
-    harvard: "RMIT Harvard",
-    chicagoA: "Chicago A",
-    chicagoB: "Chicago B",
-    ieee: "IEEE",
-    vancouver: "Vancouver",
-    aglc4: "AGLC4"
+    harvard: "RMIT Harvard"
   };
 
   // src/client/main.ts
@@ -115,6 +178,11 @@
       title: "",
       url: "",
       accessDate: "",
+      quotePage: "",
+      quotePages: "",
+      quoteSection: "",
+      quoteParagraph: "",
+      timestamp: "",
       siteName: "",
       publisher: "",
       journal: "",
@@ -126,10 +194,33 @@
       edition: "",
       place: "",
       bookTitle: "",
-      editors: [],
+      editors: [{ family: "", given: "" }],
+      editorsText: "",
+      translatorsText: "",
+      originalYear: "",
       username: "",
       platform: "",
-      reportNumber: ""
+      description: "",
+      postType: "",
+      format: "",
+      seriesTitle: "",
+      season: "",
+      episode: "",
+      productionCompanies: "",
+      writersText: "",
+      directorsText: "",
+      producersText: "",
+      hostRole: "",
+      reportNumber: "",
+      institution: "",
+      repository: "",
+      jurisdiction: "",
+      section: "",
+      reporter: "",
+      volumeLegal: "",
+      startingPage: "",
+      appendix: "",
+      toolName: ""
     };
   }
   var state = {
@@ -216,6 +307,9 @@
   function renderForm() {
     const grid = $("formGrid");
     grid.innerHTML = "";
+    if (!state.data.authors || state.data.authors.length === 0) {
+      state.data.authors = [{ family: "", given: "" }];
+    }
     const authBlock = el("div", { class: "field field--full" });
     authBlock.appendChild(el("label", { class: "field__label" }, "Authors / creators"));
     const list = el("div", { class: "authors", id: "authorsList" });
@@ -305,7 +399,18 @@
   function renderField(grid, def) {
     const wrap = el("div", { class: "field" + (def.full ? " field--full" : "") });
     wrap.appendChild(el("label", { class: "field__label" }, def.label));
-    const isLong = def.key === "title" || def.key === "bookTitle";
+    const isLong = [
+      "title",
+      "bookTitle",
+      "reportNumber",
+      "productionCompanies",
+      "writersText",
+      "directorsText",
+      "producersText",
+      "editorsText",
+      "translatorsText",
+      "appendix"
+    ].includes(String(def.key));
     const tag = isLong ? "textarea" : "input";
     const input = document.createElement(tag);
     if (input instanceof HTMLInputElement) {
@@ -337,12 +442,15 @@
     const hasAnything = state.data.title.trim() || state.data.authors.some((a) => a.family.trim() || a.given.trim()) || state.data.url.trim();
     const refOut = $("referenceOut");
     const intextOut = $("intextOut");
+    const narrativeOut = $("narrativeOut");
     const quoteOut = $("quoteOut");
     const notesOut = $("notesOut");
     if (!hasAnything) {
       refOut.innerHTML = '<span class="placeholder">Citation s\u1EBD hi\u1EC7n \u1EDF \u0111\xE2y sau khi b\u1EA1n fetch URL ho\u1EB7c \u0111i\u1EC1n th\xF4ng tin.</span>';
       intextOut.innerHTML = '<span class="placeholder">\u2014</span>';
-      quoteOut.innerHTML = '<span class="placeholder">\u2014</span>';
+      if (narrativeOut)
+        narrativeOut.innerHTML = '<span class="placeholder">--</span>';
+      quoteOut.innerHTML = '<span class="placeholder">--</span>';
       notesOut.innerHTML = "";
       return;
     }
@@ -350,6 +458,8 @@
       const out = await generateCitation(state.style, state.source, state.data);
       refOut.innerHTML = out.reference;
       intextOut.innerHTML = out.intextParaphrase;
+      if (narrativeOut)
+        narrativeOut.innerHTML = out.intextNarrative;
       quoteOut.innerHTML = out.intextQuote;
       notesOut.innerHTML = out.notes.length ? out.notes.map((n) => `<li>${n}</li>`).join("") : "";
     } catch (e) {
@@ -380,8 +490,9 @@
         return;
       }
       Object.assign(state.data, result.data);
-      if (result.data.authors && result.data.authors.length > 0) {
-        state.data.authors = result.data.authors;
+      if (result.data.authors) {
+        const fetchedAuthors = result.data.authors;
+        state.data.authors = fetchedAuthors.length > 0 ? fetchedAuthors : [{ family: "", given: "" }];
       }
       if (result.guessedType) {
         state.source = result.guessedType;
@@ -392,8 +503,9 @@
       const filledFields = [];
       if (result.data.title)
         filledFields.push("title");
-      if (result.data.authors?.length)
-        filledFields.push(`${result.data.authors.length} author(s)`);
+      const realAuthorCount = (result.data.authors || []).filter((a) => a.family?.trim() || a.given?.trim()).length;
+      if (realAuthorCount)
+        filledFields.push(`${realAuthorCount} author(s)`);
       if (result.data.year)
         filledFields.push("date");
       if (result.data.siteName)
@@ -466,6 +578,9 @@
     });
     $("copyRefBtn").addEventListener("click", () => void copyHtmlAndText("referenceOut"));
     $("copyIntextBtn").addEventListener("click", () => void copyHtmlAndText("intextOut"));
+    const copyQuoteBtn = document.getElementById("copyQuoteBtn");
+    if (copyQuoteBtn)
+      copyQuoteBtn.addEventListener("click", () => void copyHtmlAndText("quoteOut"));
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);

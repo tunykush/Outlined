@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Easy Cite Generator · A thoughtful citation companion</title>
-<meta name="description" content="Paste any URL — get a proper academic citation in APA, Harvard, Chicago, IEEE, Vancouver, or AGLC4. Built on the rules from RMIT Easy Cite." />
+<title>Outlined · A thoughtful citation companion</title>
+<meta name="description" content="Paste any URL — get a proper academic citation in APA 7th or RMIT Harvard. Built on the rules from uploaded RMIT Easy Cite guides." />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -12,9 +13,15 @@
 <!-- ============================== NAV ============================== -->
 <nav class="nav">
   <div class="nav-inner">
-    <a class="logo" href="/">
-      <span class="logo-mark" aria-hidden="true">EC</span>
-      <span class="logo-text">Easy Cite</span>
+    <a class="logo" href="/" aria-label="Outlined — home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 44 32" xmlns="http://www.w3.org/2000/svg" focusable="false">
+          <path d="M8 4 L4 4 L4 28 L8 28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" class="logo-bracket"/>
+          <circle cx="22" cy="16" r="9" fill="none" stroke="currentColor" stroke-width="3" class="logo-o"/>
+          <path d="M36 4 L40 4 L40 28 L36 28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" class="logo-bracket"/>
+        </svg>
+      </span>
+      <span class="logo-text">Outlined</span>
     </a>
     <div class="nav-links">
       <a href="#how">How it works</a>
@@ -94,7 +101,7 @@
 
     <p class="output-label">Reference list entry</p>
     <div class="output-block" id="referenceOut">
-      <span class="placeholder">Citation sẽ hiện ở đây sau khi bạn fetch URL hoặc điền thông tin.</span>
+      <span class="placeholder">Citation rendering...</span>
     </div>
 
     <p class="output-label">In-text — paraphrase</p>
@@ -102,7 +109,12 @@
       <span class="placeholder">—</span>
     </div>
 
-    <p class="output-label">In-text — direct quote</p>
+    <p class="output-label">In-text - narrative</p>
+    <div class="output-block output-block--small" id="narrativeOut">
+      <span class="placeholder">--</span>
+    </div>
+
+    <p class="output-label">In-text - direct quote</p>
     <div class="output-block output-block--small" id="quoteOut">
       <span class="placeholder">—</span>
     </div>
@@ -113,6 +125,7 @@
         Copy reference
       </button>
       <button type="button" class="btn btn--text" id="copyIntextBtn">Copy in-text</button>
+      <button type="button" class="btn btn--text" id="copyQuoteBtn">Copy quote</button>
     </div>
 
     <ul class="notes-list" id="notesOut"></ul>
@@ -154,7 +167,7 @@
     <p class="about-overline">Faithful to the source</p>
     <h2 class="about-headline">Encoded directly from <em>RMIT Easy Cite.</em></h2>
     <p class="about-text">
-      The APA 7th rules in this generator are transcribed page-by-page from RMIT Library's official
+      The APA 7th and RMIT Harvard rules in this generator are separated into style modules and based on RMIT Library's uploaded
       Easy Cite guide — author lists for 1, 2, 3-20, and 21+ authors; DOI normalisation; the article-number
       rule for online journals without page ranges; the omission of publisher when it equals the author;
       hanging-indent reminders. When the rules are open to interpretation, we follow RMIT's published examples.
@@ -164,7 +177,7 @@
 
 <footer class="footer">
   <div class="container">
-    <p>Easy Cite Generator · TypeScript full-stack · Built on rules from <a href="https://www.lib.rmit.edu.au/easy-cite/" target="_blank" rel="noopener">RMIT Library Easy Cite</a>.</p>
+    <p>Outlined · TypeScript full-stack · Built on rules from <a href="https://www.lib.rmit.edu.au/easy-cite/" target="_blank" rel="noopener">RMIT Library Easy Cite</a>.</p>
   </div>
 </footer>
 

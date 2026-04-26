@@ -1,5 +1,5 @@
 /**
- * Easy Cite Generator — Client app (TypeScript).
+ * Outlined — Client app (TypeScript).
  *
  * Flow:
  *   1. User picks style + source type
@@ -41,6 +41,11 @@ function emptyData(): CitationData {
     title: '',
     url: '',
     accessDate: '',
+    quotePage: '',
+    quotePages: '',
+    quoteSection: '',
+    quoteParagraph: '',
+    timestamp: '',
     siteName: '',
     publisher: '',
     journal: '',
@@ -52,10 +57,33 @@ function emptyData(): CitationData {
     edition: '',
     place: '',
     bookTitle: '',
-    editors: [],
+    editors: [{ family: '', given: '' }],
+    editorsText: '',
+    translatorsText: '',
+    originalYear: '',
     username: '',
     platform: '',
+    description: '',
+    postType: '',
+    format: '',
+    seriesTitle: '',
+    season: '',
+    episode: '',
+    productionCompanies: '',
+    writersText: '',
+    directorsText: '',
+    producersText: '',
+    hostRole: '',
     reportNumber: '',
+    institution: '',
+    repository: '',
+    jurisdiction: '',
+    section: '',
+    reporter: '',
+    volumeLegal: '',
+    startingPage: '',
+    appendix: '',
+    toolName: '',
   };
 }
 
@@ -167,6 +195,9 @@ function renderSourceTabs(): void {
 function renderForm(): void {
   const grid = $('formGrid');
   grid.innerHTML = '';
+  if (!state.data.authors || state.data.authors.length === 0) {
+    state.data.authors = [{ family: '', given: '' }];
+  }
 
   // Authors block — always at top
   const authBlock = el('div', { class: 'field field--full' });
@@ -267,7 +298,10 @@ function renderField(grid: HTMLElement, def: FieldDef): void {
   const wrap = el('div', { class: 'field' + (def.full ? ' field--full' : '') });
   wrap.appendChild(el('label', { class: 'field__label' }, def.label));
 
-  const isLong = def.key === 'title' || def.key === 'bookTitle';
+  const isLong = [
+    'title', 'bookTitle', 'reportNumber', 'productionCompanies', 'writersText',
+    'directorsText', 'producersText', 'editorsText', 'translatorsText', 'appendix'
+  ].includes(String(def.key));
   const tag = isLong ? 'textarea' : 'input';
   const input = document.createElement(tag) as HTMLInputElement | HTMLTextAreaElement;
   if (input instanceof HTMLInputElement) {
@@ -308,13 +342,15 @@ async function regenerate(): Promise<void> {
     state.data.url.trim();
   const refOut = $('referenceOut') as HTMLDivElement;
   const intextOut = $('intextOut') as HTMLDivElement;
+  const narrativeOut = $('narrativeOut') as HTMLDivElement | null;
   const quoteOut = $('quoteOut') as HTMLDivElement;
   const notesOut = $('notesOut') as HTMLDivElement;
 
   if (!hasAnything) {
     refOut.innerHTML = '<span class="placeholder">Citation sẽ hiện ở đây sau khi bạn fetch URL hoặc điền thông tin.</span>';
     intextOut.innerHTML = '<span class="placeholder">—</span>';
-    quoteOut.innerHTML = '<span class="placeholder">—</span>';
+    if (narrativeOut) narrativeOut.innerHTML = '<span class="placeholder">--</span>';
+    quoteOut.innerHTML = '<span class="placeholder">--</span>';
     notesOut.innerHTML = '';
     return;
   }
@@ -323,6 +359,7 @@ async function regenerate(): Promise<void> {
     const out = await generateCitation(state.style, state.source, state.data);
     refOut.innerHTML = out.reference;
     intextOut.innerHTML = out.intextParaphrase;
+    if (narrativeOut) narrativeOut.innerHTML = out.intextNarrative;
     quoteOut.innerHTML = out.intextQuote;
     notesOut.innerHTML = out.notes.length
       ? out.notes.map((n) => `<li>${n}</li>`).join('')
@@ -364,8 +401,9 @@ async function handleFetch(): Promise<void> {
 
     // Merge fetched data into state
     Object.assign(state.data, result.data);
-    if (result.data.authors && result.data.authors.length > 0) {
-      state.data.authors = result.data.authors as Author[];
+    if (result.data.authors) {
+      const fetchedAuthors = result.data.authors as Author[];
+      state.data.authors = fetchedAuthors.length > 0 ? fetchedAuthors : [{ family: '', given: '' }];
     }
 
     // Switch source type to guess
@@ -379,7 +417,8 @@ async function handleFetch(): Promise<void> {
 
     const filledFields: string[] = [];
     if (result.data.title) filledFields.push('title');
-    if (result.data.authors?.length) filledFields.push(`${result.data.authors.length} author(s)`);
+    const realAuthorCount = (result.data.authors || []).filter((a) => a.family?.trim() || a.given?.trim()).length;
+    if (realAuthorCount) filledFields.push(`${realAuthorCount} author(s)`);
     if (result.data.year) filledFields.push('date');
     if (result.data.siteName) filledFields.push('site');
     if (result.data.journal) filledFields.push('journal');
@@ -464,6 +503,8 @@ function init(): void {
 
   $('copyRefBtn').addEventListener('click', () => void copyHtmlAndText('referenceOut'));
   $('copyIntextBtn').addEventListener('click', () => void copyHtmlAndText('intextOut'));
+  const copyQuoteBtn = document.getElementById('copyQuoteBtn');
+  if (copyQuoteBtn) copyQuoteBtn.addEventListener('click', () => void copyHtmlAndText('quoteOut'));
 }
 
 if (document.readyState === 'loading') {

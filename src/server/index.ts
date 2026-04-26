@@ -92,7 +92,7 @@ app.post('/api/generate', (req: Request<unknown, unknown, GenerateBody>, res: Re
 });
 
 app.listen(PORT, () => {
-  console.log(`✓ Easy Cite Generator running at http://localhost:${PORT}`);
+  console.log(`✓ Outlined running at http://localhost:${PORT}`);
   console.log(`  POST /api/extract  { "url": "..." }`);
   console.log(`  POST /api/generate { style, source, data }`);
 });

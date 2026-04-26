@@ -1,8 +1,8 @@
 /**
- * Fetch HTML safely:
+ * Fetch page metadata safely:
  *   - 8s timeout
- *   - 5 MB size cap
- *   - Only HTML/XML content types
+ *   - 5 MB size cap for textual pages
+ *   - Allows HTML/XML/text and lightweight PDF URL fallback
  *   - Follows redirects
  */
 
@@ -26,6 +26,20 @@ export interface FetchResult {
   finalUrl: string;
 }
 
+function pseudoHtmlForPdf(finalUrl: string): string {
+  let filename = 'PDF document';
+  try {
+    filename = decodeURIComponent(
+      (new URL(finalUrl).pathname.split('/').pop() || 'PDF document')
+        .replace(/\.pdf$/i, '')
+        .replace(/[-_]+/g, ' ')
+    );
+  } catch {
+    /* ignore */
+  }
+  return `<html><head><title>${filename}</title><meta property="og:type" content="article" /></head><body><h1>${filename}</h1></body></html>`;
+}
+
 export async function fetchHtml(urlString: string): Promise<FetchResult> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
@@ -35,22 +49,26 @@ export async function fetchHtml(urlString: string): Promise<FetchResult> {
       signal: ac.signal,
       redirect: 'follow',
       headers: {
-        'User-Agent':
-          'Mozilla/5.0 (compatible; EasyCiteBot/1.0; reference-generator)',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (compatible; OutlinedBot/1.0; reference-generator)',
+        Accept: 'text/html,application/xhtml+xml,application/xml,application/pdf;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
       },
     });
 
     if (!res.ok) {
-      throw makeError(
-        502,
-        'FETCH_FAIL',
-        `Trang web trả về HTTP ${res.status}.`
-      );
+      throw makeError(502, 'FETCH_FAIL', `Trang web trả về HTTP ${res.status}.`);
     }
 
     const ct = (res.headers.get('content-type') || '').toLowerCase();
+    const finalUrl = res.url || urlString;
+
+    // We do not OCR/parse PDFs here. Instead, accept PDF URLs and return a safe
+    // pseudo HTML shell so the UI can still generate a report/document citation
+    // and let the user refine author/date/report-number fields manually.
+    if (ct.includes('application/pdf') || /\.pdf(?:\?|$)/i.test(finalUrl)) {
+      return { html: pseudoHtmlForPdf(finalUrl), finalUrl };
+    }
+
     if (ct && !ct.includes('html') && !ct.includes('xml') && !ct.includes('text')) {
       throw makeError(415, 'NOT_HTML', `Content-Type không phải HTML (${ct}).`);
     }
@@ -62,6 +80,7 @@ export async function fetchHtml(urlString: string): Promise<FetchResult> {
     const reader = res.body.getReader();
     const chunks: Uint8Array[] = [];
     let total = 0;
+
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const { value, done } = await reader.read();
@@ -80,7 +99,7 @@ export async function fetchHtml(urlString: string): Promise<FetchResult> {
     const m = ct.match(/charset=([^;]+)/i);
     if (m) charset = m[1].trim().toLowerCase();
     const html = buf.toString(charset === 'utf-8' ? 'utf-8' : 'latin1');
-    return { html, finalUrl: res.url };
+    return { html, finalUrl };
   } catch (err: unknown) {
     const e = err as { name?: string; status?: number; message?: string };
     if (e.name === 'AbortError') {
