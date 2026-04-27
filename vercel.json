@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm run build:client",
+  "outputDirectory": "public",
+  "functions": {
+    "api/extract.ts": { "memory": 1024, "maxDuration": 30 },
+    "api/generate.ts": { "memory": 256, "maxDuration": 10 }
+  }
+}
