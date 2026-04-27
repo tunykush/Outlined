@@ -11,6 +11,9 @@
 
 import * as cheerio from 'cheerio';
 import type { CheerioAPI } from 'cheerio';
+import { Readability } from '@mozilla/readability';
+import { JSDOM } from 'jsdom';
+import nlp from 'compromise';
 import type { Author, CitationData, SourceType } from '../shared/types.js';
 import { emptyCitationData } from '../shared/citation-engine.js';
 
@@ -183,6 +186,8 @@ function cleanTitle(rawTitle: string, siteName: string, baseUrl: string): string
     title = title.replace(new RegExp(`\\s*[|–—-]\\s*${escapeRegExp(site)}\\s*$`, 'i'), '').trim();
   }
   title = title.replace(/\s*[|–—-]\s*Fandom\s*$/i, '').trim();
+  // Second pass: strip any remaining " | suffix" left after site-name regex didn't match
+  if (title.includes('|')) title = title.split('|')[0].trim();
   return title;
 }
 
@@ -228,6 +233,81 @@ function visibleDateText($: CheerioAPI): string {
     if (m?.[1]) return m[1];
   }
   return '';
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   LAYER 1: Readability.js — article-body parsing
+   Extracts byline and siteName from the article content itself,
+   not just meta tags. Mozilla's algorithm handles hundreds of CMS
+   patterns that simple CSS-class scanning misses.
+   ───────────────────────────────────────────────────────────────── */
+
+interface ReadabilityMeta {
+  byline: string;   // e.g. "By Sarah Johnson, Senior Reporter"
+  siteName: string; // e.g. "Forbes"
+  title: string;    // cleaned article title (no site suffix)
+}
+
+function readabilityExtract(html: string, url: string): ReadabilityMeta {
+  try {
+    const dom = new JSDOM(html, { url });
+    const reader = new Readability(dom.window.document);
+    const article = reader.parse();
+    return {
+      byline: article?.byline || '',
+      siteName: article?.siteName || '',
+      title: article?.title || '',
+    };
+  } catch {
+    return { byline: '', siteName: '', title: '' };
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   LAYER 2: compromise NER — last-resort author extraction
+   Only runs when every other method (meta tags, JSON-LD, DOM scan,
+   Readability byline) has returned nothing. compromise identifies
+   PERSON and ORGANIZATION entities from free-form text, which lets
+   us handle bylines like "Sarah Johnson covers tech for Bloomberg"
+   where the name isn't delimited by "By", commas, or semicolons.
+   ───────────────────────────────────────────────────────────────── */
+
+function nerAuthors(text: string): Author[] {
+  if (!text.trim()) return [];
+  const doc = nlp(text);
+
+  // Try recognised person names first — highest confidence
+  const people = (doc.people().out('array') as string[])
+    .map((s: string) => s.trim())
+    .filter((s: string) => s.length >= 3 && !shouldIgnoreAuthor(s));
+
+  if (people.length > 0) {
+    return people.map((name: string) => splitName(name));
+  }
+
+  // Fall back to org entities (e.g. "Haig Partners", "Handle")
+  const orgs = (doc.organizations().out('array') as string[])
+    .map((s: string) => s.trim())
+    .filter((s: string) => s.length >= 2 && !shouldIgnoreAuthor(s));
+
+  return orgs.map((name: string) => ({ family: name, given: '', isOrganisation: true as const }));
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   LAYER 3: itemprop / pubdate <time> scanning
+   Prioritises time elements that explicitly declare publication date
+   via schema.org microdata, which is more reliable than the first
+   time[datetime] element (which may be a comment timestamp).
+   ───────────────────────────────────────────────────────────────── */
+
+function extractTimeElements($: CheerioAPI): string {
+  return (
+    $('time[itemprop="datePublished"]').first().attr('datetime') ||
+    $('[itemprop="datePublished"]').first().attr('content') ||
+    $('[itemprop="datePublished"]').first().attr('datetime') ||
+    $('time[pubdate]').first().attr('datetime') ||
+    ''
+  );
 }
 
 function shouldIgnoreAuthor(raw: string): boolean {
@@ -293,12 +373,30 @@ function extractVisibleBylineAuthors($: CheerioAPI): Author[] {
 
 function inferSiteNameFromTitle(rawTitle: string): string {
   const bits = rawTitle.split(/\s*[|–—]\s*/).map((x) => x.trim()).filter(Boolean);
-  if (bits.length >= 2) return bits[bits.length - 1];
+  if (bits.length >= 2) {
+    const last = bits[bits.length - 1];
+    // Compound names like "Dealership Buy-Sell Advisors - Haig Partners" → take last segment after " - "
+    const subBits = last.split(/\s+-\s+/).map((x) => x.trim()).filter(Boolean);
+    return subBits[subBits.length - 1] || last;
+  }
   return '';
 }
 
-/** Pull authors from various sources */
-function extractAuthors($: CheerioAPI, jsonld: ReturnType<typeof parseJsonLd>): Author[] {
+/** Pull authors from various sources, in descending reliability order.
+ *
+ *  Priority chain:
+ *  1. citation_author meta (academic gold standard)
+ *  2. JSON-LD author field
+ *  3. article:author / meta[name="author"] / dc.creator
+ *  4. Readability byline  (Readability.js found the author line in article body)
+ *  5. DOM byline CSS scan ([class*="author"], "By …" paragraphs)
+ *  6. compromise NER     (last resort — entity recognition on byline text)
+ */
+function extractAuthors(
+  $: CheerioAPI,
+  jsonld: ReturnType<typeof parseJsonLd>,
+  readabilityByline = '',
+): Author[] {
   const seen = new Set<string>();
   const out: Author[] = [];
   const add = (raw: string): void => {
@@ -337,14 +435,33 @@ function extractAuthors($: CheerioAPI, jsonld: ReturnType<typeof parseJsonLd>): 
       'meta[name="sailthru.author"]',
     ]);
     if (a) {
-      // Safe delimiters first. Avoid splitting "Family, Given" unless the tag clearly contains multiple authors.
       if (/[;|\n]/.test(a)) a.split(/\s*(?:;|\||\n)\s*/).forEach(add);
       else add(a);
     }
   }
 
+  // 5. Readability byline — Mozilla's algorithm extracts the author line from
+  //    article body content, catching cases where meta tags are absent but the
+  //    page has a visible "By Sarah Johnson" line near the headline.
+  if (out.length === 0 && readabilityByline) {
+    const names = splitAuthorList(cleanBylineName(readabilityByline))
+      .filter((n) => !shouldIgnoreAuthor(n));
+    for (const name of names) {
+      const key = name.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); out.push(splitName(name)); }
+    }
+  }
+
+  // 6. DOM byline CSS scan (existing heuristic)
   if (out.length === 0) {
     out.push(...extractVisibleBylineAuthors($));
+  }
+
+  // 7. compromise NER — last resort when all heuristics fail.
+  //    Recognises PERSON and ORGANIZATION entities from free-form byline text.
+  //    e.g. "Sarah Johnson covers tech for Bloomberg" → Author: Sarah Johnson
+  if (out.length === 0 && readabilityByline) {
+    out.push(...nerAuthors(readabilityByline));
   }
 
   return out;
@@ -438,9 +555,14 @@ function guessType(
 export function extractMetadata(html: string, baseUrl: string): ExtractionResult {
   const $ = cheerio.load(html);
   const jsonld = parseJsonLd($);
+  // Readability runs in parallel with Cheerio — it parses the article body to
+  // extract a cleaned title, byline, and site name that meta tags often omit.
+  const rdbl = readabilityExtract(html, baseUrl);
   const data = emptyCitationData() as Partial<CitationData>;
 
-  // Title
+  // Title — Readability gives a cleaner title than og:title on many sites
+  // (strips " | Site Name" suffixes automatically), but we still prefer
+  // og:title first since it's the canonical machine-readable signal.
   const rawTitle = pickFirst(
     metaContent($, ['meta[property="og:title"]']),
     metaContent($, ['meta[name="twitter:title"]']),
@@ -448,16 +570,18 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
     jsonld.newsArticle?.headline,
     jsonld.article?.headline,
     metaContent($, ['meta[name="dc.title"]', 'meta[name="DC.title"]']),
+    rdbl.title,
     $('h1').first().text(),
     $('title').first().text()
   ).replace(/\s+/g, ' ');
 
-  // Site name / publisher
+  // Site name — Readability's siteName fills the gap when og:site_name is absent
   const host = hostnameOf(baseUrl);
   data.siteName = pickFirst(
     metaContent($, ['meta[property="og:site_name"]']),
     jsonld.website?.name,
     metaContent($, ['meta[name="application-name"]']),
+    rdbl.siteName,
     inferSiteNameFromTitle(rawTitle),
     host
   );
@@ -481,7 +605,9 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
     data.siteName
   );
 
-  // Date: published date first, modified/visible last-updated as fallback.
+  // Date: reliable publication date signals only — never fall back to modification date.
+  // Priority: explicit meta > JSON-LD datePublished > schema.org microdata <time> >
+  //           generic meta[name="date"] > first time[datetime] > visible body text.
   const dateRaw = pickFirst(
     metaContent($, ['meta[property="article:published_time"]']),
     metaContent($, ['meta[name="article:published_time"]']),
@@ -489,6 +615,9 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
     metaContent($, ['meta[name="citation_date"]']),
     jsonld.newsArticle?.datePublished,
     jsonld.article?.datePublished,
+    // schema.org microdata <time itemprop="datePublished"> is more reliable than
+    // the first time[datetime] (which might be a comment timestamp)
+    extractTimeElements($),
     metaContent($, [
       'meta[name="datePublished"]',
       'meta[name="date"]',
@@ -498,9 +627,6 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
       'meta[name="parsely-pub-date"]',
     ]),
     $('time[datetime]').first().attr('datetime'),
-    metaContent($, ['meta[property="article:modified_time"]', 'meta[name="dateModified"]']),
-    jsonld.newsArticle?.dateModified,
-    jsonld.article?.dateModified,
     visibleDateText($)
   );
   if (dateRaw) {
@@ -510,8 +636,8 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
     data.day = day;
   }
 
-  // Authors
-  data.authors = extractAuthors($, jsonld);
+  // Authors — pass Readability byline so NER fallback has article-body text to work with
+  data.authors = extractAuthors($, jsonld, rdbl.byline);
 
   // URL & canonical
   data.url = pickFirst(
@@ -560,13 +686,6 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
   data.accessDate = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
   const guessedType = guessType($, jsonld, baseUrl);
-
-  // The user's RMIT Harvard example list uses a shortened author label for some web articles
-  // (e.g. "Bermudez et al. (2020) ..."). Store it separately so journal/book rules can
-  // still list all authors while web references can match the validated class examples.
-  if ((guessedType === 'webpage' || guessedType === 'blog-post') && (data.authors?.length || 0) > 1) {
-    data.referenceAuthorText = `${data.authors?.[0]?.family || data.authors?.[0]?.given || 'Author'} et al.`;
-  }
 
   return { data, guessedType };
 }

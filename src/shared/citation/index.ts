@@ -8,6 +8,8 @@ import type { CitationData, CitationOutput, CitationStyle, SourceType } from '..
 import { generateApa7, apa7Internals } from './styles/apa7.js';
 import { generateHarvard, harvardInternals } from './styles/harvard.js';
 import { validateAndRepairHarvard } from './harvard-validation.js';
+import { validateAndRepairApa7 } from './apa-validation.js';
+import { normalizeCitationData } from './normalize.js';
 
 function clean(s: string = ''): string {
   return String(s).replace(/\s+/g, ' ').trim();
@@ -57,14 +59,15 @@ export function generate(
   source: SourceType,
   data: CitationData
 ): CitationOutput {
+  const normalizedData = normalizeCitationData(style, source, data);
   let output: CitationOutput;
 
   if (style === 'apa7') {
-    output = generateApa7(source, data);
+    output = validateAndRepairApa7(source, normalizedData, generateApa7(source, normalizedData));
   } else if (style === 'harvard') {
-    output = validateAndRepairHarvard(source, data, generateHarvard(source, data));
+    output = validateAndRepairHarvard(source, normalizedData, generateHarvard(source, normalizedData));
   } else {
-    const fallback = generateApa7(source, data);
+    const fallback = generateApa7(source, normalizedData);
     output = {
       ...fallback,
       reference: `(Style "${style}" is not implemented yet) ${fallback.reference.replace(/<\/?i>/g, '')}`,
@@ -74,6 +77,6 @@ export function generate(
 
   return {
     ...output,
-    notes: [...styleNotes(style, source, data), ...(output.notes || [])],
+    notes: [...styleNotes(style, source, normalizedData), ...(output.notes || [])],
   };
 }

@@ -150,6 +150,17 @@ function apaDate(d: CitationData, includeMonthDay: boolean): string {
   return `(${year}).`;
 }
 
+function apaRetrievalDate(accessDate: string): string {
+  const s = clean(accessDate);
+  if (!s) return '';
+  const months = 'January|February|March|April|May|June|July|August|September|October|November|December';
+  let m = s.match(new RegExp(`^(\\d{1,2})\\s+(${months})\\s+(\\d{4})$`, 'i'));
+  if (m) return `${m[2][0].toUpperCase()}${m[2].slice(1)} ${Number(m[1])}, ${m[3]}`;
+  m = s.match(new RegExp(`^(${months})\\s+(\\d{1,2}),?\\s+(\\d{4})$`, 'i'));
+  if (m) return `${m[1][0].toUpperCase()}${m[1].slice(1)} ${Number(m[2])}, ${m[3]}`;
+  return s;
+}
+
 function doiUrl(rawDoi: string): string {
   if (!has(rawDoi)) return '';
   const raw = clean(rawDoi)
@@ -271,18 +282,18 @@ function apaWebpageDocument(d: CitationData): string {
 
 function apaWikiEntry(d: CitationData): string {
   const date = apaDate(d, Boolean(clean(d.month) || clean(d.day)));
-  const entryTitle = esc(sentenceCase(d.title) || 'Untitled source');
-  const siteTitle = clean(d.siteName || d.publisher);
-
-  // Treat Fandom/wiki-like article pages as no-author webpages for this generator:
-  // Title. (Year/n.d.). Title. Site name. URL
-  // No automatic Retrieved date is added.
-  let out = `${dot(entryTitle)} ${date} ${dot(entryTitle)} `;
-  if (siteTitle) out += `${ital(esc(siteTitle))}. `;
+  const entryTitle = esc(sentenceCase(d.title) || 'Untitled entry');
+  const workTitle = clean(d.siteName || d.publisher || 'Reference work');
+  const retrieval = apaRetrievalDate(d.accessDate);
+  // RMIT APA: encyclopedia/Wikipedia entries place the entry title in the author
+  // position when no author is identified and use "In" before the reference work.
+  let out = `${dot(entryTitle)} ${date} In ${ital(esc(workTitle))}. `;
+  if (retrieval && /wiki|dictionary|encyclopedia|fandom/i.test(workTitle + ' ' + d.url)) {
+    out += `Retrieved ${esc(retrieval)}, from `;
+  }
   if (has(d.url)) out += clean(d.url);
   return noFinalPeriodAfterUrl(out);
 }
-
 
 function apaNewspaperOnline(d: CitationData): string {
   const date = apaDate(d, true);
@@ -315,12 +326,13 @@ function apaJournal(d: CitationData): string {
   if (has(d.journal)) out += ital(esc(clean(d.journal)));
   if (has(d.volume)) out += `${has(d.journal) ? ', ' : ''}${ital(esc(clean(d.volume)))}`;
   if (has(d.issue)) out += `(${esc(clean(d.issue))})`;
-  const locator = has(d.pages)
-    ? esc(clean(d.pages))
-    : has(d.articleNumber)
-      ? `Article ${esc(clean(d.articleNumber))}`
-      : '';
-  if (locator) out += `, ${locator}`;
+  const locatorParts: string[] = [];
+  if (has(d.pages)) locatorParts.push(esc(clean(d.pages)));
+  if (has(d.articleNumber)) {
+    const article = clean(d.articleNumber);
+    locatorParts.push(/^article\b/i.test(article) ? esc(article) : `Article ${esc(article)}`);
+  }
+  if (locatorParts.length) out += `, ${locatorParts.join(', ')}`;
   out = dot(out.trim());
   if (has(d.doi)) out += ` ${doiUrl(d.doi)}`;
   else if (has(d.url)) out += ` ${clean(d.url)}`;
@@ -578,10 +590,10 @@ function apaPersonalCommunication(d: CitationData): string {
 
 function apaAiChat(d: CitationData): string {
   const date = apaDate(d, true);
-  const title = `${ital(esc(sentenceCase(d.title || 'Untitled chat')))} [Generative AI chat]`;
-  const { lead, omitTitle } = authorOrTitleLead(d, date, title);
-  let out = lead;
-  if (!omitTitle) out += `${title}. `;
+  const titleText = sentenceCase(d.title || 'Untitled AI output');
+  const title = `${esc(titleText)} [Generative AI chat]`;
+  const auth = authorsAPA(d.authors) || 'OpenAI';
+  let out = `${dot(esc(auth))} ${date} ${title}. `;
   if (has(d.toolName || d.platform)) out += `${esc(clean(d.toolName || d.platform))}. `;
   if (has(d.url)) out += clean(d.url);
   else if (has(d.appendix)) out += `${esc(clean(d.appendix))}`;

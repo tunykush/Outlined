@@ -56,7 +56,9 @@ function authorsHarvard(authors: Author[] = []): string {
   if (!list.length) return '';
   if (list.length === 1) return list[0];
   if (list.length === 2) return `${list[0]} and ${list[1]}`;
-  return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+  if (list.length === 3) return `${list[0]}, ${list[1]} and ${list[2]}`;
+  // RMIT Harvard reference list: first 3 authors then et al. for 4+
+  return `${list[0]}, ${list[1]}, ${list[2]} et al.`;
 }
 
 function referenceAuthorsHarvard(d: CitationData): string {
@@ -162,11 +164,6 @@ function dateFull(d: CitationData): string {
   return `(${sourceDateText(d)})`;
 }
 
-function webPublicationDate(d: CitationData): string {
-  // User-provided RMIT Harvard examples for web pages keep full date when the page exposes one,
-  // but fall back to year/n.d. for issue ranges like "July-August 2020" or missing dates.
-  return has(d.day) && has(d.month) ? dateFull(d) : dateYear(d);
-}
 
 function accessPart(d: CitationData): string {
   return has(d.accessDate) ? `accessed ${esc(accessDateText(d))}` : 'accessed date needed';
@@ -197,7 +194,16 @@ function edn(edition: string): string {
 function websiteName(d: CitationData): string {
   const raw = clean(d.siteName || d.publisher || d.platform);
   if (!raw) return '';
-  if (/\.[a-z]{2,}(?:\.[a-z]{2,})?$/i.test(raw)) return raw;
+  // If the value looks like a bare domain (e.g. "brandlife.io"), derive a readable name
+  if (/\.[a-z]{2,}(?:\.[a-z]{2,})?$/i.test(raw)) {
+    const first = raw.split('.')[0] || '';
+    const readable = first
+      .split(/[-_]/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    return readable ? `${readable} website` : raw;
+  }
   return /\bwebsite\b/i.test(raw) ? raw : `${raw} website`;
 }
 
@@ -304,9 +310,25 @@ function harvardPersonalCommunicationNarrative(d: CitationData): string {
 
 function harvardWebpageLike(d: CitationData, titleAlwaysItalic = false): string {
   const rawTitle = esc(clean(d.title) || 'Untitled webpage');
-  const titleForNoAuthor = titleAlwaysItalic ? ital(rawTitle) : rawTitle;
-  const { lead, omittedTitle } = refLead(d, titleForNoAuthor, webPublicationDate(d));
-  const parts: string[] = [omittedTitle ? lead.trim() : `${lead.trim()} ${titleAlwaysItalic ? ital(rawTitle) : rawTitle}`];
+  const titleHtml = titleAlwaysItalic ? ital(rawTitle) : rawTitle;
+
+  // RMIT Harvard: no personal author → use org/site name as organisation author.
+  // Title-first is only the absolute last resort when no org name exists either.
+  const hasPersonal = validPeople(d.authors).length > 0;
+  const orgName = !hasPersonal ? clean(d.siteName || d.publisher || '') : '';
+
+  let lead: string;
+  let titleInLead = false;
+  if (hasPersonal) {
+    lead = `${esc(referenceAuthorsHarvard(d))} ${dateYear(d)} `;
+  } else if (orgName) {
+    lead = `${esc(orgName)} ${dateYear(d)} `;
+  } else {
+    lead = `${titleHtml} ${dateYear(d)} `;
+    titleInLead = true;
+  }
+
+  const parts: string[] = [titleInLead ? lead.trim() : `${lead.trim()} ${titleHtml}`];
   const site = websiteName(d);
   if (site) parts.push(esc(site));
   parts.push(accessPart(d));
@@ -314,7 +336,7 @@ function harvardWebpageLike(d: CitationData, titleAlwaysItalic = false): string 
 }
 
 function harvardWebpage(d: CitationData): string {
-  return harvardWebpageLike(d, false);
+  return harvardWebpageLike(d, true);
 }
 
 function harvardWebpageDocument(d: CitationData): string {
@@ -322,7 +344,7 @@ function harvardWebpageDocument(d: CitationData): string {
 }
 
 function harvardWikiEntry(d: CitationData): string {
-  return harvardWebpageLike(d, false);
+  return harvardWebpageLike(d, true);
 }
 
 function harvardNewsOnline(d: CitationData): string {
@@ -484,11 +506,6 @@ function harvardFilm(d: CitationData): string {
   if (companies) parts.push(esc(companies));
   if (has(d.place)) parts.push(esc(clean(d.place)));
   return endFullStop(joinNonEmpty(parts));
-}
-
-function roleName(raw: string, fallback: string): string {
-  const r = clean(raw || fallback).toLowerCase();
-  return r.endsWith('s') ? r : r;
 }
 
 function harvardPodcast(d: CitationData): string {
