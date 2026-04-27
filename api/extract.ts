@@ -31,7 +31,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
   try {
     const parsed = await validateUrlSafety(url.trim());
     const { html, finalUrl } = await fetchHtml(parsed.toString());
-    const { data, guessedType } = extractMetadata(html, finalUrl || parsed.toString());
+    const { data, guessedType } = await extractMetadata(html, finalUrl || parsed.toString());
     res.json({ ok: true, data, guessedType });
   } catch (err: unknown) {
     const e = err as { status?: number; code?: string; message?: string };

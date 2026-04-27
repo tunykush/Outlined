@@ -11,9 +11,6 @@
 
 import * as cheerio from 'cheerio';
 import type { CheerioAPI } from 'cheerio';
-import { Readability } from '@mozilla/readability';
-import { JSDOM } from 'jsdom';
-import nlp from 'compromise';
 import type { Author, CitationData, SourceType } from '../shared/types.js';
 import { emptyCitationData } from '../shared/citation-engine.js';
 
@@ -248,8 +245,10 @@ interface ReadabilityMeta {
   title: string;    // cleaned article title (no site suffix)
 }
 
-function readabilityExtract(html: string, url: string): ReadabilityMeta {
+async function readabilityExtract(html: string, url: string): Promise<ReadabilityMeta> {
   try {
+    const { JSDOM } = await import('jsdom');
+    const { Readability } = await import('@mozilla/readability');
     const dom = new JSDOM(html, { url });
     const reader = new Readability(dom.window.document);
     const article = reader.parse();
@@ -272,25 +271,31 @@ function readabilityExtract(html: string, url: string): ReadabilityMeta {
    where the name isn't delimited by "By", commas, or semicolons.
    ───────────────────────────────────────────────────────────────── */
 
-function nerAuthors(text: string): Author[] {
+async function nerAuthors(text: string): Promise<Author[]> {
   if (!text.trim()) return [];
-  const doc = nlp(text);
+  try {
+    const nlpModule = await import('compromise');
+    const nlp = nlpModule.default;
+    const doc = nlp(text);
 
-  // Try recognised person names first — highest confidence
-  const people = (doc.people().out('array') as string[])
-    .map((s: string) => s.trim())
-    .filter((s: string) => s.length >= 3 && !shouldIgnoreAuthor(s));
+    // Try recognised person names first — highest confidence
+    const people = (doc.people().out('array') as string[])
+      .map((s: string) => s.trim())
+      .filter((s: string) => s.length >= 3 && !shouldIgnoreAuthor(s));
 
-  if (people.length > 0) {
-    return people.map((name: string) => splitName(name));
+    if (people.length > 0) {
+      return people.map((name: string) => splitName(name));
+    }
+
+    // Fall back to org entities (e.g. "Haig Partners", "Handle")
+    const orgs = (doc.organizations().out('array') as string[])
+      .map((s: string) => s.trim())
+      .filter((s: string) => s.length >= 2 && !shouldIgnoreAuthor(s));
+
+    return orgs.map((name: string) => ({ family: name, given: '', isOrganisation: true as const }));
+  } catch {
+    return [];
   }
-
-  // Fall back to org entities (e.g. "Haig Partners", "Handle")
-  const orgs = (doc.organizations().out('array') as string[])
-    .map((s: string) => s.trim())
-    .filter((s: string) => s.length >= 2 && !shouldIgnoreAuthor(s));
-
-  return orgs.map((name: string) => ({ family: name, given: '', isOrganisation: true as const }));
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -392,11 +397,11 @@ function inferSiteNameFromTitle(rawTitle: string): string {
  *  5. DOM byline CSS scan ([class*="author"], "By …" paragraphs)
  *  6. compromise NER     (last resort — entity recognition on byline text)
  */
-function extractAuthors(
+async function extractAuthors(
   $: CheerioAPI,
   jsonld: ReturnType<typeof parseJsonLd>,
   readabilityByline = '',
-): Author[] {
+): Promise<Author[]> {
   const seen = new Set<string>();
   const out: Author[] = [];
   const add = (raw: string): void => {
@@ -461,7 +466,7 @@ function extractAuthors(
   //    Recognises PERSON and ORGANIZATION entities from free-form byline text.
   //    e.g. "Sarah Johnson covers tech for Bloomberg" → Author: Sarah Johnson
   if (out.length === 0 && readabilityByline) {
-    out.push(...nerAuthors(readabilityByline));
+    out.push(...await nerAuthors(readabilityByline));
   }
 
   return out;
@@ -552,12 +557,12 @@ function guessType(
 
 /* ---------- main extractor ---------- */
 
-export function extractMetadata(html: string, baseUrl: string): ExtractionResult {
+export async function extractMetadata(html: string, baseUrl: string): Promise<ExtractionResult> {
   const $ = cheerio.load(html);
   const jsonld = parseJsonLd($);
   // Readability runs in parallel with Cheerio — it parses the article body to
   // extract a cleaned title, byline, and site name that meta tags often omit.
-  const rdbl = readabilityExtract(html, baseUrl);
+  const rdbl = await readabilityExtract(html, baseUrl);
   const data = emptyCitationData() as Partial<CitationData>;
 
   // Title — Readability gives a cleaner title than og:title on many sites
@@ -637,7 +642,7 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
   }
 
   // Authors — pass Readability byline so NER fallback has article-body text to work with
-  data.authors = extractAuthors($, jsonld, rdbl.byline);
+  data.authors = await extractAuthors($, jsonld, rdbl.byline);
 
   // URL & canonical
   data.url = pickFirst(
