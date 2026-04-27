@@ -176,6 +176,10 @@ function authorOrTitleLead(
 ): { lead: string; omitTitle: boolean } {
   const auth = authorsAPA(d.authors);
   if (auth) return { lead: `${dot(esc(auth))} ${date} `, omitTitle: false };
+  // APA 7: no personal author → use org/site name as group author.
+  // Title-first is the last resort only when no organisation name exists.
+  const orgName = clean(d.siteName || d.publisher || '');
+  if (orgName) return { lead: `${dot(esc(orgName))} ${date} `, omitTitle: false };
   const fallbackTitle = titleForNoAuthor || esc(clean(d.title) || 'Untitled source');
   return { lead: `${dot(fallbackTitle)} ${date} `, omitTitle: true };
 }
