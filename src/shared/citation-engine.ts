@@ -11,6 +11,7 @@ export function emptyCitationData(): CitationData {
     title: '',
     url: '',
     accessDate: '',
+    referenceAuthorText: '',
     quotePage: '',
     quotePages: '',
     quoteSection: '',

@@ -41,6 +41,7 @@ function emptyData(): CitationData {
     title: '',
     url: '',
     accessDate: '',
+    referenceAuthorText: '',
     quotePage: '',
     quotePages: '',
     quoteSection: '',

@@ -7,6 +7,7 @@
 import type { CitationData, CitationOutput, CitationStyle, SourceType } from '../types.js';
 import { generateApa7, apa7Internals } from './styles/apa7.js';
 import { generateHarvard, harvardInternals } from './styles/harvard.js';
+import { validateAndRepairHarvard } from './harvard-validation.js';
 
 function clean(s: string = ''): string {
   return String(s).replace(/\s+/g, ' ').trim();
@@ -61,7 +62,7 @@ export function generate(
   if (style === 'apa7') {
     output = generateApa7(source, data);
   } else if (style === 'harvard') {
-    output = generateHarvard(source, data);
+    output = validateAndRepairHarvard(source, data, generateHarvard(source, data));
   } else {
     const fallback = generateApa7(source, data);
     output = {

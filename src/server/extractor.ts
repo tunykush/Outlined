@@ -208,9 +208,23 @@ function visibleDateText($: CheerioAPI): string {
   const patterns = [
     /(?:Cập\s*nhật\s*lần\s*cuối|Cập\s*nhật|Ngày\s*đăng|Đăng\s*ngày|Xuất\s*bản|Published|Updated|Last\s*updated)\s*:?\s*(\d{1,2}[\/-]\d{1,2}[\/-](?:19|20)\d{2})/i,
     /(?:Cập\s*nhật\s*lần\s*cuối|Cập\s*nhật|Ngày\s*đăng|Đăng\s*ngày|Xuất\s*bản|Published|Updated|Last\s*updated)\s*:?\s*((?:19|20)\d{2}[\/-]\d{1,2}[\/-]\d{1,2})/i,
+    /(?:Published|Updated|Last\s*updated|Date)\s*:?\s*([A-Z][a-z]+\s+\d{1,2},?\s+(?:19|20)\d{2})/i,
+    /(?:Published|Updated|Last\s*updated|Date)\s*:?\s*(\d{1,2}\s+[A-Z][a-z]+\s+(?:19|20)\d{2})/i,
   ];
   for (const re of patterns) {
     const m = text.match(re);
+    if (m?.[1]) return m[1];
+  }
+
+  // Article pages often place a date directly under the byline, e.g. "July-August 2020".
+  const shortBlockSelector = 'time,h2,h3,h4,h5,h6,p,span,div';
+  const monthRange = /\b([A-Z][a-z]+(?:\s*[-–]\s*[A-Z][a-z]+)?\s+(?:19|20)\d{2})\b/;
+  const monthDayYear = /\b([A-Z][a-z]+\s+\d{1,2},?\s+(?:19|20)\d{2})\b/;
+  const dayMonthYear = /\b(\d{1,2}\s+[A-Z][a-z]+\s+(?:19|20)\d{2})\b/;
+  for (const el of $(shortBlockSelector).toArray()) {
+    const t = $(el).text().replace(/\s+/g, ' ').trim();
+    if (!t || t.length > 140) continue;
+    const m = t.match(monthDayYear) || t.match(dayMonthYear) || t.match(monthRange);
     if (m?.[1]) return m[1];
   }
   return '';
@@ -224,6 +238,63 @@ function shouldIgnoreAuthor(raw: string): boolean {
   if (/^(wiki|fandom|admin|administrator|staff|editorial team)$/i.test(s)) return true;
   if (/^by\s*$/i.test(s)) return true;
   return false;
+}
+
+function cleanBylineName(raw: string): string {
+  return raw
+    .replace(/\bby\b\s*/i, '')
+    .replace(/\b(written|posted|published)\s+by\b\s*/i, '')
+    .replace(/\b(APR|PhD|Ph\.D\.?|MBA|MA|MSc|Dr\.?|Prof\.?|Professor)\b\.?/gi, '')
+    .replace(/\s*,\s*(and\b)/gi, ' $1')
+    .replace(/\s*,\s*$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function splitAuthorList(raw: string): string[] {
+  const normalised = cleanBylineName(raw)
+    .replace(/\s*&\s*/g, ' and ')
+    .replace(/\s+with\s+/gi, ' and ');
+  return normalised
+    .split(/\s+(?:and)\s+|\s*;\s*|\s*\|\s*|\n+/i)
+    .map(cleanBylineName)
+    .filter(Boolean);
+}
+
+function extractVisibleBylineAuthors($: CheerioAPI): Author[] {
+  const candidates: string[] = [];
+
+  $('[class*="author" i], [class*="byline" i], [rel="author"], [itemprop="author"], a[href*="/author" i], a[href*="/authors" i]').each((_, el) => {
+    const t = $(el).text().replace(/\s+/g, ' ').trim();
+    if (t && t.length <= 180) candidates.push(t);
+  });
+
+  // PRSA-style pages expose the byline as a heading: "By Heather Bermudez, APR and Aileen Izquierdo".
+  $('h2,h3,h4,h5,h6,p,span,div').each((_, el) => {
+    const t = $(el).clone().children('script,style,nav,footer,header').remove().end().text().replace(/\s+/g, ' ').trim();
+    if (/^by\s+/i.test(t) && t.length <= 220) candidates.push(t);
+  });
+
+  const seen = new Set<string>();
+  const out: Author[] = [];
+  for (const candidate of candidates) {
+    const cleanedCandidate = candidate.replace(/\s+and\s+\d{4}.*$/i, '').trim();
+    for (const name of splitAuthorList(cleanedCandidate)) {
+      if (shouldIgnoreAuthor(name)) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(splitName(name));
+    }
+    if (out.length) break;
+  }
+  return out;
+}
+
+function inferSiteNameFromTitle(rawTitle: string): string {
+  const bits = rawTitle.split(/\s*[|–—]\s*/).map((x) => x.trim()).filter(Boolean);
+  if (bits.length >= 2) return bits[bits.length - 1];
+  return '';
 }
 
 /** Pull authors from various sources */
@@ -270,6 +341,10 @@ function extractAuthors($: CheerioAPI, jsonld: ReturnType<typeof parseJsonLd>): 
       if (/[;|\n]/.test(a)) a.split(/\s*(?:;|\||\n)\s*/).forEach(add);
       else add(a);
     }
+  }
+
+  if (out.length === 0) {
+    out.push(...extractVisibleBylineAuthors($));
   }
 
   return out;
@@ -383,8 +458,10 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
     metaContent($, ['meta[property="og:site_name"]']),
     jsonld.website?.name,
     metaContent($, ['meta[name="application-name"]']),
+    inferSiteNameFromTitle(rawTitle),
     host
   );
+  if (/^prsa\.org$/i.test(host)) data.siteName = 'PRSA';
 
   // Fandom pages sometimes expose site_name as "Fandom" even though the actual
   // reference-work title is the middle segment, e.g. "TYPE-MOON Wiki".
@@ -480,9 +557,16 @@ export function extractMetadata(html: string, baseUrl: string): ExtractionResult
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
   ];
-  data.accessDate = `${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+  data.accessDate = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
   const guessedType = guessType($, jsonld, baseUrl);
+
+  // The user's RMIT Harvard example list uses a shortened author label for some web articles
+  // (e.g. "Bermudez et al. (2020) ..."). Store it separately so journal/book rules can
+  // still list all authors while web references can match the validated class examples.
+  if ((guessedType === 'webpage' || guessedType === 'blog-post') && (data.authors?.length || 0) > 1) {
+    data.referenceAuthorText = `${data.authors?.[0]?.family || data.authors?.[0]?.given || 'Author'} et al.`;
+  }
 
   return { data, guessedType };
 }

@@ -64,6 +64,8 @@ export interface CitationData {
   title: string;
   url: string;
   accessDate: string;
+  /** Optional style-specific author display used by Harvard reference validation when a source accepted reference uses a shortened author label such as Bermudez et al. */
+  referenceAuthorText: string;
 
   // ---- direct quote locator ----
   quotePage: string;

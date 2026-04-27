@@ -19,9 +19,18 @@ const ital = (s: string): string => `<i>${s}</i>`;
 const stripHtml = (s: string): string => s.replace(/<[^>]+>/g, '');
 const clean = (s: string = ''): string => String(s).replace(/\s+/g, ' ').trim();
 const has = (s: string | undefined | null): boolean => clean(s || '').length > 0;
-const endFullStop = (s: string): string => /[.!?]$/.test(stripHtml(s).trim()) ? s : `${s}.`;
-const noFinalPeriodAfterUrl = (s: string): string => s.replace(/\s+\./g, '.').trim();
+const endFullStop = (s: string): string => /[.!?]$/.test(stripHtml(s).trim()) ? s.trim() : `${s.trim()}.`;
 const joinNonEmpty = (parts: string[], sep = ', '): string => parts.filter((p) => has(stripHtml(p))).join(sep);
+const noFinalPeriodAfterUrl = (s: string): string => s.trim().replace(/(https?:\/\/\S+)\.$/i, '$1');
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+const MONTH_LOOKUP: Record<string, string> = Object.fromEntries(
+  MONTHS.flatMap((m, i) => [[m.toLowerCase(), m], [m.slice(0, 3).toLowerCase(), m], [String(i + 1), m], [String(i + 1).padStart(2, '0'), m]])
+);
 
 function initialsNoStops(given: string): string {
   return clean(given)
@@ -50,6 +59,11 @@ function authorsHarvard(authors: Author[] = []): string {
   return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
 }
 
+function referenceAuthorsHarvard(d: CitationData): string {
+  const override = clean((d as CitationData & { referenceAuthorText?: string }).referenceAuthorText || '');
+  return override || authorsHarvard(d.authors);
+}
+
 function parsePeople(raw: string): Author[] {
   const s = clean(raw);
   if (!s) return [];
@@ -66,8 +80,6 @@ function parsePeople(raw: string): Author[] {
       if (parts.length === 1) return { family: parts[0], given: '' };
       const family = parts.shift() || '';
       const initials = parts.join(' ');
-      // Raw editor strings are accepted as either "Family Initial" or "Given Family".
-      // Prefer Family Initial because that is the expected helper format in this app.
       return { family, given: initials };
     })
     .filter((a) => has(a.family) || has(a.given));
@@ -91,21 +103,78 @@ function yearOnly(d: CitationData): string {
   return clean(d.year) || 'n.d.';
 }
 
+function normaliseMonth(month: string): string {
+  const m = clean(month).replace(/\.$/, '');
+  if (!m) return '';
+  return MONTH_LOOKUP[m.toLowerCase()] || m;
+}
+
+function normaliseDay(day: string): string {
+  return clean(day).replace(/(st|nd|rd|th)$/i, '');
+}
+
+function parseLooseDate(raw: string): { day: string; month: string; year: string } {
+  const s = clean(raw).replace(/,/g, '');
+  if (!s) return { day: '', month: '', year: '' };
+
+  let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (m) return { day: String(Number(m[3])), month: normaliseMonth(m[2]), year: m[1] };
+
+  m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (m) return { day: String(Number(m[1])), month: normaliseMonth(m[2]), year: m[3] };
+
+  m = s.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4}[a-z]?)$/i);
+  if (m) return { day: normaliseDay(m[1]), month: normaliseMonth(m[2]), year: m[3] };
+
+  m = s.match(/^([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?\s+(\d{4}[a-z]?)$/i);
+  if (m) return { day: normaliseDay(m[2]), month: normaliseMonth(m[1]), year: m[3] };
+
+  m = s.match(/^(\d{4}[a-z]?)$/i);
+  if (m) return { day: '', month: '', year: m[1] };
+
+  return { day: '', month: '', year: '' };
+}
+
+function dayMonthYear(day: string, month: string, year: string): string {
+  const y = clean(year) || 'n.d.';
+  const m = normaliseMonth(month);
+  const d = normaliseDay(day);
+  if (d && m && y) return `${d} ${m} ${y}`;
+  if (m && y) return `${m} ${y}`;
+  return y;
+}
+
+function sourceDateText(d: CitationData): string {
+  return dayMonthYear(d.day, d.month, yearOnly(d));
+}
+
+function accessDateText(d: CitationData): string {
+  const fromRaw = parseLooseDate(d.accessDate);
+  if (fromRaw.year || fromRaw.month || fromRaw.day) return dayMonthYear(fromRaw.day, fromRaw.month, fromRaw.year);
+  return clean(d.accessDate);
+}
+
 function dateYear(d: CitationData): string {
   return `(${yearOnly(d)})`;
 }
 
 function dateFull(d: CitationData): string {
-  const year = yearOnly(d);
-  const month = clean(d.month);
-  const day = clean(d.day);
-  if (day && month && year) return `(${day} ${month} ${year})`;
-  if (month && year) return `(${month} ${year})`;
-  return `(${year})`;
+  return `(${sourceDateText(d)})`;
+}
+
+function webPublicationDate(d: CitationData): string {
+  // User-provided RMIT Harvard examples for web pages keep full date when the page exposes one,
+  // but fall back to year/n.d. for issue ranges like "July-August 2020" or missing dates.
+  return has(d.day) && has(d.month) ? dateFull(d) : dateYear(d);
 }
 
 function accessPart(d: CitationData): string {
-  return has(d.accessDate) ? `accessed ${esc(clean(d.accessDate))}` : 'accessed date needed';
+  return has(d.accessDate) ? `accessed ${esc(accessDateText(d))}` : 'accessed date needed';
+}
+
+function appendUrl(out: string, url: string): string {
+  if (!has(url)) return endFullStop(out);
+  return noFinalPeriodAfterUrl(`${out.trim()}. ${clean(url)}`);
 }
 
 function doiHarvard(rawDoi: string): string {
@@ -132,10 +201,10 @@ function websiteName(d: CitationData): string {
   return /\bwebsite\b/i.test(raw) ? raw : `${raw} website`;
 }
 
-function refLead(d: CitationData, titleHtml: string, date = dateYear(d)): { lead: string; omittedTitle: boolean } {
-  const author = authorsHarvard(d.authors);
+function refLead(d: CitationData, titleHtmlForNoAuthor: string, date = dateYear(d)): { lead: string; omittedTitle: boolean } {
+  const author = referenceAuthorsHarvard(d);
   if (author) return { lead: `${esc(author)} ${date} `, omittedTitle: false };
-  return { lead: `${titleHtml} ${date} `, omittedTitle: true };
+  return { lead: `${titleHtmlForNoAuthor} ${date} `, omittedTitle: true };
 }
 
 function titleSnippet(d: CitationData, words = 4): string {
@@ -154,12 +223,12 @@ const ITALIC_NO_AUTHOR_IN_TEXT = new Set<SourceType>([
   'powerpoint-slides',
   'lab-manual',
   'thesis',
-  'ai-chat',
 ]);
 
 function noAuthorText(d: CitationData, source: SourceType): string {
   if (source === 'journal') return clean(d.journal || d.title || 'Title');
   if (source === 'newspaper-online' || source === 'newspaper-print') return clean(d.publisher || d.siteName || d.title || 'Title');
+  if (source === 'ai-chat') return clean(d.publisher || d.toolName || d.title || 'OpenAI');
   const snippet = esc(titleSnippet(d));
   return ITALIC_NO_AUTHOR_IN_TEXT.has(source) ? ital(snippet) : `'${snippet}'`;
 }
@@ -176,64 +245,84 @@ function quoteLocatorHarvard(d: CitationData, source: SourceType): string {
   if (section && para) return `${section} section, para. ${para}`;
   if (section) return `${section} section`;
   if (para) return `para. ${para}`;
-  if (source === 'social-twitter' || source === 'social-facebook' || source === 'social-instagram' || source === 'social-tiktok') return '';
+  if (
+    source === 'social-twitter' ||
+    source === 'social-facebook' ||
+    source === 'social-instagram' ||
+    source === 'social-tiktok' ||
+    source === 'youtube-video' ||
+    source === 'streaming-video' ||
+    source === 'podcast' ||
+    source === 'film' ||
+    source === 'tv-series' ||
+    source === 'tv-episode'
+  ) return '';
   return 'page/locator needed';
 }
 
 function harvardInTextParenthetical(d: CitationData, source: SourceType): string {
   if (source === 'legal-act') return `(${esc(clean(d.title) || 'Title of Act')} ${esc(yearOnly(d))}${has(d.section) ? ` s ${esc(clean(d.section))}` : ''})`;
   if (source === 'legal-case') return `(${ital(esc(clean(d.title) || 'Case title'))} ${esc(yearOnly(d))})`;
-  if (source === 'personal-communication') return harvardPersonalCommunicationInText(d);
+  if (source === 'personal-communication') return harvardPersonalCommunicationParenthetical(d);
   const author = inTextAuthor(d.authors);
+  if ((source === 'newspaper-online' || source === 'newspaper-print') && !author) {
+    return `(${esc(noAuthorText(d, source))} ${esc(sourceDateText(d))})`;
+  }
   return author ? `(${esc(author)} ${esc(yearOnly(d))})` : `(${noAuthorText(d, source)} ${esc(yearOnly(d))})`;
 }
 
 function harvardInTextNarrative(d: CitationData, source: SourceType): string {
-  if (source === 'personal-communication') return harvardPersonalCommunicationInText(d);
+  if (source === 'personal-communication') return harvardPersonalCommunicationNarrative(d);
   const author = inTextAuthor(d.authors);
+  if ((source === 'newspaper-online' || source === 'newspaper-print') && !author) {
+    return `${esc(noAuthorText(d, source))} (${esc(sourceDateText(d))})`;
+  }
   return author ? `${esc(author)} (${esc(yearOnly(d))})` : `${noAuthorText(d, source)} (${esc(yearOnly(d))})`;
 }
 
 function harvardInTextQuote(d: CitationData, source: SourceType): string {
-  if (source === 'personal-communication') return harvardPersonalCommunicationInText(d);
+  if (source === 'personal-communication') return harvardPersonalCommunicationParenthetical(d);
   const base = harvardInTextParenthetical(d, source).replace(/\)$/, '');
   const locator = quoteLocatorHarvard(d, source);
   return locator ? `${base}:${esc(locator)})` : `${base})`;
 }
 
-function harvardPersonalCommunicationInText(d: CitationData): string {
+function communicationName(d: CitationData): string {
   const a = validPeople(d.authors)[0];
-  const name = a ? `${initialsNoStops(a.given)} ${clean(a.family)}`.trim() : 'Initial Family';
-  const day = clean(d.day);
-  const month = clean(d.month);
-  const year = clean(d.year);
-  const date = [day, month, year].filter(Boolean).join(' ') || 'exact date needed';
-  return `(${esc(name)} ${esc(date)}, personal communication)`;
+  return a ? clean(a.family || a.given) : 'Family name needed';
+}
+
+function harvardPersonalCommunicationParenthetical(d: CitationData): string {
+  return `(${esc(communicationName(d))}, personal communication, ${esc(sourceDateText(d))})`;
+}
+
+function harvardPersonalCommunicationNarrative(d: CitationData): string {
+  return `${esc(communicationName(d))} (personal communication, ${esc(sourceDateText(d))})`;
 }
 
 /* -------------------- reference-list generators -------------------- */
 
-function harvardWebpage(d: CitationData): string {
-  const title = ital(esc(clean(d.title) || 'Untitled webpage'));
-  const { lead, omittedTitle } = refLead(d, title);
-  const parts: string[] = [lead.trim()];
-  if (!omittedTitle) parts.push(title);
+function harvardWebpageLike(d: CitationData, titleAlwaysItalic = false): string {
+  const rawTitle = esc(clean(d.title) || 'Untitled webpage');
+  const titleForNoAuthor = titleAlwaysItalic ? ital(rawTitle) : rawTitle;
+  const { lead, omittedTitle } = refLead(d, titleForNoAuthor, webPublicationDate(d));
+  const parts: string[] = [omittedTitle ? lead.trim() : `${lead.trim()} ${titleAlwaysItalic ? ital(rawTitle) : rawTitle}`];
   const site = websiteName(d);
   if (site) parts.push(esc(site));
   parts.push(accessPart(d));
-  let out = joinNonEmpty(parts, ', ');
-  if (has(d.url)) out += `. ${clean(d.url)}`;
-  else out += '.';
-  return noFinalPeriodAfterUrl(out);
+  return appendUrl(joinNonEmpty(parts), d.url);
+}
+
+function harvardWebpage(d: CitationData): string {
+  return harvardWebpageLike(d, false);
 }
 
 function harvardWebpageDocument(d: CitationData): string {
-  return harvardWebpage(d);
+  return harvardWebpageLike(d, true);
 }
 
 function harvardWikiEntry(d: CitationData): string {
-  // Fandom/wiki pages are handled as RMIT Harvard webpage-style online sources.
-  return harvardWebpage(d);
+  return harvardWebpageLike(d, false);
 }
 
 function harvardNewsOnline(d: CitationData): string {
@@ -241,13 +330,11 @@ function harvardNewsOnline(d: CitationData): string {
   const author = authorsHarvard(d.authors);
   const pub = clean(d.publisher || d.siteName || 'Newspaper or magazine');
   let out = author
-    ? `${esc(author)} ${dateYear(d)} ${title}, ${ital(esc(pub))}`
+    ? `${esc(author)} ${dateFull(d)} ${title}, ${ital(esc(pub))}`
     : `${esc(pub)} ${dateFull(d)} ${title}, ${ital(esc(pub))}`;
   if (has(d.pages)) out += `, ${esc(clean(d.pages))}`;
   out += `, ${accessPart(d)}`;
-  if (has(d.url)) out += `. ${clean(d.url)}`;
-  else out += '.';
-  return noFinalPeriodAfterUrl(out);
+  return appendUrl(out, d.url);
 }
 
 function harvardNewsPrint(d: CitationData): string {
@@ -261,6 +348,21 @@ function harvardNewsPrint(d: CitationData): string {
   return endFullStop(out);
 }
 
+function articleNumberPart(raw: string): string {
+  const n = clean(raw);
+  if (!n) return '';
+  return /^article\b/i.test(n) ? n : `Article ${n}`;
+}
+
+function journalLocator(d: CitationData): string {
+  const pages = clean(d.pages);
+  const article = articleNumberPart(d.articleNumber);
+  if (pages && article) return `${pages}, ${article}`;
+  if (pages) return pages;
+  if (article) return article;
+  return '';
+}
+
 function harvardJournal(d: CitationData): string {
   const title = `'${esc(clean(d.title) || 'Untitled article')}'`;
   const author = authorsHarvard(d.authors);
@@ -270,7 +372,7 @@ function harvardJournal(d: CitationData): string {
     : `${esc(journalName)} ${dateYear(d)} ${title}, ${ital(esc(journalName))}`;
   const vol = clean(d.volume);
   const issue = clean(d.issue);
-  const locator = has(d.pages) ? clean(d.pages) : has(d.articleNumber) ? `Article ${clean(d.articleNumber)}` : '';
+  const locator = journalLocator(d);
   if (vol) out += `, ${esc(vol)}${issue ? `(${esc(issue)})` : ''}`;
   if (locator) out += `:${esc(locator)}`;
   if (has(d.doi)) out += `, ${doiHarvard(d.doi)}.`;
@@ -282,8 +384,7 @@ function harvardJournal(d: CitationData): string {
 function harvardBook(d: CitationData): string {
   const title = ital(esc(clean(d.title) || 'Untitled book'));
   const { lead, omittedTitle } = refLead(d, title);
-  const parts: string[] = [lead.trim()];
-  if (!omittedTitle) parts.push(title);
+  const parts: string[] = [omittedTitle ? lead.trim() : `${lead.trim()} ${title}`];
   const edition = edn(d.edition);
   if (edition) parts.push(esc(edition));
   if (has(d.publisher)) parts.push(esc(clean(d.publisher)));
@@ -295,8 +396,7 @@ function harvardBook(d: CitationData): string {
 function harvardTranslatedBook(d: CitationData): string {
   const title = ital(esc(clean(d.title) || 'Untitled book'));
   const { lead, omittedTitle } = refLead(d, title);
-  const parts: string[] = [lead.trim()];
-  if (!omittedTitle) parts.push(title);
+  const parts: string[] = [omittedTitle ? lead.trim() : `${lead.trim()} ${title}`];
   if (has(d.translatorsText)) parts.push(`translated by ${esc(clean(d.translatorsText))}`);
   const edition = edn(d.edition);
   if (edition) parts.push(esc(edition));
@@ -329,14 +429,13 @@ function harvardBookChapter(d: CitationData): string {
 function harvardReport(d: CitationData): string {
   const title = ital(esc(clean(d.title) || 'Untitled report'));
   const { lead, omittedTitle } = refLead(d, title);
-  const parts: string[] = [lead.trim()];
-  if (!omittedTitle) parts.push(title);
+  const parts: string[] = [omittedTitle ? lead.trim() : `${lead.trim()} ${title}`];
   if (has(d.reportNumber)) parts.push(esc(clean(d.reportNumber)));
   const pub = clean(d.publisher || d.siteName);
   if (pub) parts.push(esc(pub));
   if (has(d.url)) {
     parts.push(accessPart(d));
-    return `${joinNonEmpty(parts)}. ${clean(d.url)}`;
+    return appendUrl(joinNonEmpty(parts), d.url);
   }
   return endFullStop(joinNonEmpty(parts));
 }
@@ -348,9 +447,8 @@ function harvardBlogPost(d: CitationData): string {
   let out = author
     ? `${esc(author)} ${dateFull(d)} ${title}, ${ital(esc(blog))}`
     : `${esc(blog)} ${dateFull(d)} ${title}, ${ital(esc(blog))}`;
-  if (has(d.url)) out += `, ${accessPart(d)}. ${clean(d.url)}`;
-  else out += '.';
-  return noFinalPeriodAfterUrl(out);
+  out += `, ${accessPart(d)}`;
+  return appendUrl(out, d.url);
 }
 
 function firstWords(text: string, n: number): string {
@@ -360,23 +458,20 @@ function firstWords(text: string, n: number): string {
 }
 
 function harvardSocial(d: CitationData, defaultPostType: string): string {
-  const author = authorsHarvard(d.authors) || clean(d.siteName || d.publisher || 'Page name');
+  const author = authorsHarvard(d.authors) || clean(d.siteName || d.publisher || d.username || 'Page name');
   const title = firstWords(d.title || 'Untitled post', 10);
   const type = clean(d.postType || defaultPostType);
-  const page = clean(d.siteName || d.publisher || author);
+  const page = clean(d.siteName || d.publisher || d.username || author);
   let out = `${esc(author)} ${dateFull(d)} '${esc(title)}' [${esc(type)}], ${esc(page)}, ${accessPart(d)}`;
-  if (has(d.url)) out += `. ${clean(d.url)}`;
-  else out += '.';
-  return noFinalPeriodAfterUrl(out);
+  return appendUrl(out, d.url);
 }
 
 function harvardYouTube(d: CitationData): string {
   const author = authorsHarvard(d.authors) || clean(d.siteName || d.publisher || 'Channel name');
-  const title = ital(esc(clean(d.title) || 'Untitled video'));
-  let out = `${esc(author)} ${dateFull(d)} ${title} [video], ${esc(clean(d.platform || 'YouTube'))}, ${accessPart(d)}`;
-  if (has(d.url)) out += `. ${clean(d.url)}`;
-  else out += '.';
-  return noFinalPeriodAfterUrl(out);
+  const channel = clean(d.siteName || d.publisher || author);
+  const website = clean(d.platform || 'YouTube');
+  let out = `${esc(author)} ${dateFull(d)} '${esc(clean(d.title) || 'Untitled video')}' [video], ${esc(channel)}, ${esc(websiteName({ ...d, siteName: website, publisher: '', platform: '' }))}, ${accessPart(d)}`;
+  return appendUrl(out, d.url);
 }
 
 function harvardFilm(d: CitationData): string {
@@ -385,82 +480,101 @@ function harvardFilm(d: CitationData): string {
   const creator = authorsHarvard(d.authors);
   const companies = clean(d.productionCompanies || d.publisher);
   const parts = [creator ? `${esc(creator)} (${esc(role)}) ${dateYear(d)} ${title} [motion picture]` : `${title} ${dateYear(d)} [motion picture]`];
+  if (has(d.seriesTitle)) parts.push(esc(clean(d.seriesTitle)));
   if (companies) parts.push(esc(companies));
   if (has(d.place)) parts.push(esc(clean(d.place)));
   return endFullStop(joinNonEmpty(parts));
 }
 
+function roleName(raw: string, fallback: string): string {
+  const r = clean(raw || fallback).toLowerCase();
+  return r.endsWith('s') ? r : r;
+}
+
 function harvardPodcast(d: CitationData): string {
-  const author = authorsHarvard(d.authors) || clean(d.publisher || d.siteName || 'Host');
-  const title = ital(esc(clean(d.title) || 'Untitled podcast'));
-  let out = `${esc(author)} ${dateFull(d)} ${title} [podcast], ${esc(clean(d.publisher || d.platform || 'Podcast'))}`;
-  if (has(d.url)) out += `, ${accessPart(d)}. ${clean(d.url)}`;
-  else out += '.';
-  return noFinalPeriodAfterUrl(out);
+  const hosts = authorsHarvard(d.authors) || clean(d.publisher || d.siteName || 'Host');
+  const hostRole = validPeople(d.authors).length > 1 ? 'hosts' : 'host';
+  const producer = peopleTextHarvard([], d.producersText) || clean(d.productionCompanies || '');
+  const lead = producer
+    ? `${esc(hosts)} (${hostRole}) and ${esc(producer)} (producer)`
+    : `${esc(hosts)} (${hostRole})`;
+  const series = ital(esc(clean(d.seriesTitle || d.publisher || d.siteName || 'Podcast series')));
+  const network = clean(d.platform || d.publisher || d.siteName || 'Podcast network');
+  let out = `${lead} ${dateFull(d)} '${esc(clean(d.title) || 'Untitled episode')}' [podcast], ${series}, ${esc(network)}, ${accessPart(d)}`;
+  return appendUrl(out, d.url);
 }
 
 function harvardStreamingVideo(d: CitationData): string {
   const author = authorsHarvard(d.authors) || clean(d.publisher || d.siteName || 'Creator');
-  const title = ital(esc(clean(d.title) || 'Untitled video'));
-  let out = `${esc(author)} ${dateFull(d)} ${title} [video], ${esc(clean(d.publisher || d.platform || 'Publisher'))}`;
-  if (has(d.url)) out += `, ${accessPart(d)}. ${clean(d.url)}`;
-  else out += '.';
-  return noFinalPeriodAfterUrl(out);
+  const channel = clean(d.siteName || d.publisher || author);
+  const website = websiteName(d) || 'Website website';
+  let out = `${esc(author)} ${dateFull(d)} '${esc(clean(d.title) || 'Untitled video')}' [video], ${esc(channel)}, ${esc(website)}, ${accessPart(d)}`;
+  return appendUrl(out, d.url);
 }
 
 function harvardTvSeries(d: CitationData): string {
-  return harvardFilm({ ...d, title: d.title || d.seriesTitle, format: 'television program' });
+  const title = clean(d.title || d.seriesTitle || 'Untitled television program');
+  const creator = authorsHarvard(d.authors);
+  const role = clean(d.hostRole || 'producer').toLowerCase();
+  const companies = clean(d.productionCompanies || d.publisher);
+  const parts = [creator ? `${esc(creator)} (${esc(role)}) ${dateYear(d)} '${esc(title)}' [television program]` : `'${esc(title)}' ${dateYear(d)} [television program]`];
+  if (companies) parts.push(esc(companies));
+  if (has(d.place)) parts.push(esc(clean(d.place)));
+  return endFullStop(joinNonEmpty(parts));
 }
 
 function harvardTvEpisode(d: CitationData): string {
   const title = `'${esc(clean(d.title) || 'Untitled episode')}'`;
   const series = ital(esc(clean(d.seriesTitle) || 'Series title'));
-  const creator = peopleTextHarvard([], d.writersText || d.directorsText || d.producersText);
-  const lead = creator ? `${esc(creator)} ${dateFull(d)} ` : `${title} ${dateFull(d)} `;
+  const creator = peopleTextHarvard(d.authors, d.directorsText || d.producersText || d.writersText);
+  const role = clean(d.hostRole || (d.directorsText ? 'director' : 'producer')).toLowerCase();
+  const leadTitle = creator
+    ? `${esc(creator)} (${esc(role)}) ${dateYear(d)} ${title} [television program]`
+    : `${title} ${dateYear(d)} [television program]`;
   const details = [has(d.season) ? `season ${clean(d.season)}` : '', has(d.episode) ? `episode ${clean(d.episode)}` : ''].filter(Boolean).join(', ');
-  const parts = [`${lead}${creator ? title : ''}`.trim(), `${series} [television program${details ? `, ${esc(details)}` : ''}]`];
+  const parts = [leadTitle, `${series}${details ? ` (${esc(details)})` : ''}`];
   if (has(d.productionCompanies || d.publisher)) parts.push(esc(clean(d.productionCompanies || d.publisher)));
+  if (has(d.place)) parts.push(esc(clean(d.place)));
   return endFullStop(joinNonEmpty(parts));
 }
 
 function harvardImage(d: CitationData): string {
   const title = ital(esc(clean(d.title) || 'Untitled image'));
   const { lead, omittedTitle } = refLead(d, title, dateFull(d));
-  const parts = [lead.trim()];
-  if (!omittedTitle) parts.push(`${title} [${esc(clean(d.description || d.format || 'image'))}]`);
+  const titleWithFormat = `${title} [${esc(clean(d.description || d.format || 'image'))}]`;
+  const parts = [omittedTitle ? lead.trim() : `${lead.trim()} ${titleWithFormat}`];
   if (has(d.publisher || d.siteName)) parts.push(esc(clean(d.publisher || d.siteName)));
   if (has(d.url)) {
     parts.push(accessPart(d));
-    return `${joinNonEmpty(parts)}. ${clean(d.url)}`;
+    return appendUrl(joinNonEmpty(parts), d.url);
   }
   return endFullStop(joinNonEmpty(parts));
 }
 
 function harvardCourseMaterial(d: CitationData, defaultFormat: string): string {
-  const author = authorsHarvard(d.authors) || 'RMIT Creds';
+  const author = authorsHarvard(d.authors) || clean(d.institution || d.publisher || 'RMIT University');
   const title = `'${esc(clean(d.title) || 'Untitled course material')}'`;
   const format = clean(d.format || defaultFormat);
-  const institution = clean(d.institution || d.publisher || 'RMIT University');
+  const institution = clean(d.platform || d.institution || d.publisher || 'RMIT University');
   const parts = [`${esc(author)} ${dateYear(d)} ${title} [${esc(format)}]`, esc(institution)];
-  if (has(d.place)) parts.push(esc(clean(d.place)));
   if (has(d.url)) {
     parts.push(accessPart(d));
-    return `${joinNonEmpty(parts)}. ${clean(d.url)}`;
+    return appendUrl(joinNonEmpty(parts), d.url);
   }
   return endFullStop(joinNonEmpty(parts));
 }
 
 function harvardThesis(d: CitationData): string {
   const title = ital(esc(clean(d.title) || 'Untitled thesis'));
-  const type = clean(d.format || 'PhD dissertation');
+  const type = clean(d.format || 'Doctoral dissertation');
   const author = authorsHarvard(d.authors) || 'Author needed';
   const parts = [`${esc(author)} ${dateYear(d)} ${title} [${esc(type)}]`];
   if (has(d.institution)) parts.push(esc(clean(d.institution)));
+  if (has(d.repository)) parts.push(`${esc(clean(d.repository))} database`);
   if (has(d.url)) {
     parts.push(accessPart(d));
-    return `${joinNonEmpty(parts)}. ${clean(d.url)}`;
+    return appendUrl(joinNonEmpty(parts), d.url);
   }
-  if (has(d.repository)) parts.push(`${esc(clean(d.repository))} database`);
   if (has(d.place)) parts.push(esc(clean(d.place)));
   return endFullStop(joinNonEmpty(parts));
 }
@@ -485,17 +599,22 @@ function harvardLegalCase(d: CitationData): string {
 }
 
 function harvardPersonalCommunication(d: CitationData): string {
-  return `Personal communication is cited in-text only: ${harvardPersonalCommunicationInText(d)}. Do not include it in the reference list.`;
+  return `Personal communication is cited in-text only: ${harvardPersonalCommunicationParenthetical(d)}. Do not include it in the reference list.`;
 }
 
 function harvardAiChat(d: CitationData): string {
   const author = authorsHarvard(d.authors) || clean(d.publisher || 'OpenAI');
-  const title = ital(esc(clean(d.title || d.toolName || 'Untitled chat')));
-  const tool = clean(d.toolName || d.platform || 'AI tool');
-  let out = `${esc(author)} ${dateYear(d)} ${title} [${esc(clean(d.format || 'Large language model'))}], ${accessPart(d)}`;
-  if (has(d.url)) out += `. ${clean(d.url)}`;
-  else out += `. ${esc(tool)}`;
-  if (has(d.appendix)) out += `. ${esc(clean(d.appendix))}`;
+  const tool = clean(d.toolName || d.title || 'ChatGPT');
+  const format = clean(d.format || 'Large language model');
+  const appendixUrl = has(d.appendix) ? clean(d.appendix).split(/\s+/).find((part) => /^https?:\/\//i.test(part)) || '' : '';
+  const url = clean(d.url || appendixUrl).replace(/\.$/, '');
+  let out = `${esc(author)} ${dateYear(d)} ${esc(tool)} [${esc(format)}], ${accessPart(d)}`;
+  if (has(url)) out += `. ${url}`;
+  else out = endFullStop(out);
+  if (has(d.appendix)) {
+    const appendix = clean(d.appendix).replace(/^https?:\/\/\S+\s*/i, '').replace(/^\.\s*/, '').trim();
+    if (appendix) out += `. ${esc(appendix)}`;
+  }
   return noFinalPeriodAfterUrl(out);
 }
 
@@ -522,7 +641,7 @@ const dispatch: Record<SourceType, (d: CitationData) => string> = {
   'tv-series': harvardTvSeries,
   'tv-episode': harvardTvEpisode,
   image: harvardImage,
-  'lecture-recording': (d) => harvardCourseMaterial(d, 'lecture notes'),
+  'lecture-recording': (d) => harvardCourseMaterial(d, 'lecture recording'),
   'powerpoint-slides': (d) => harvardCourseMaterial(d, 'PowerPoint slides'),
   'lab-manual': (d) => harvardCourseMaterial(d, 'practical manual'),
   thesis: harvardThesis,
