@@ -140,6 +140,61 @@ const fixtures = [
     },
     expected: "Gimenez C, Sierra V and Rodon J (2012) 'Sustainable operations: their impact on the triple bottom line', International Journal of Production Economics, 140(1):149–159, doi:10.1016/j.ijpe.2012.01.035.",
   },
+  {
+    name: 'Creative Flair webpage from uploaded Harvard reference list',
+    source: 'webpage',
+    data: {
+      ...base,
+      year: '2024',
+      title: 'The Effects of Art and Culture on Todays Modern Society',
+      siteName: 'Creative Flair',
+      publisher: 'Creative Flair',
+      accessDate: '5 September 2024',
+      url: 'https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/',
+    },
+    expected: 'Creative Flair (2024) The Effects of Art and Culture on Todays Modern Society, Creative Flair website, accessed 5 September 2024. https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/',
+  },
+  {
+    name: 'No-date webpage from uploaded Harvard reference list',
+    source: 'webpage',
+    data: {
+      ...base,
+      authors: [{ family: 'Escarraga', given: 'F' }],
+      year: 'n.d.',
+      title: 'Just for Laughs: Why Stand-Up Comedy is an Important Tool for Social Change',
+      siteName: 'Living Life Fearless',
+      publisher: 'Living Life Fearless',
+      accessDate: '1 September 2024',
+      url: 'https://livinglifefearless.co/2022/features/just-for-laughs-why-stand-up-comedy-is-an-important-tool-for-social-change/',
+    },
+    expected: 'Escarraga F (n.d.) Just for Laughs: Why Stand-Up Comedy is an Important Tool for Social Change, Living Life Fearless website, accessed 1 September 2024. https://livinglifefearless.co/2022/features/just-for-laughs-why-stand-up-comedy-is-an-important-tool-for-social-change/',
+  },
+  {
+    name: 'Book without publication place does not invent n.p.',
+    source: 'book',
+    data: {
+      ...base,
+      authors: [{ family: 'Kraidy', given: 'M' }],
+      year: '2005',
+      title: 'Hybridity: The cultural logic of globalization',
+      publisher: 'Temple University Press',
+    },
+    expected: 'Kraidy M (2005) Hybridity: The cultural logic of globalization, Temple University Press.',
+  },
+  {
+    name: 'Journal without DOI from uploaded Harvard reference list',
+    source: 'journal',
+    data: {
+      ...base,
+      authors: [{ family: 'Yus', given: 'F' }],
+      year: '2002',
+      title: 'Stand-up comedy and cultural spread: The case of sex roles',
+      journal: 'Babel Afial',
+      volume: '10',
+      pages: '245-292',
+    },
+    expected: "Yus F (2002) 'Stand-up comedy and cultural spread: The case of sex roles', Babel Afial, 10:245-292.",
+  },
 ];
 
 let failed = 0;

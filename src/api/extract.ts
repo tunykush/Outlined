@@ -1,6 +1,7 @@
 import { validateUrlSafety } from '../server/safety.js';
 import { fetchHtml } from '../server/fetcher.js';
 import { extractMetadata } from '../server/extractor.js';
+import type { CitationStyle } from '../shared/types.js';
 
 type Req = { method?: string; body: Record<string, unknown> };
 type Res = {
@@ -22,7 +23,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     return;
   }
 
-  const { url } = req.body || {};
+  const { url, style } = req.body || {};
   if (!url || typeof url !== 'string') {
     res.status(400).json({ ok: false, code: 'MISSING_URL', message: 'Vui lòng cung cấp URL.' });
     return;
@@ -31,7 +32,10 @@ export default async function handler(req: Req, res: Res): Promise<void> {
   try {
     const parsed = await validateUrlSafety(url.trim());
     const { html, finalUrl } = await fetchHtml(parsed.toString());
-    const { data, guessedType } = await extractMetadata(html, finalUrl || parsed.toString());
+    const extractionStyle: CitationStyle | undefined = style === 'apa7' || style === 'harvard' || style === 'ieee'
+      ? style
+      : undefined;
+    const { data, guessedType } = await extractMetadata(html, finalUrl || parsed.toString(), extractionStyle);
     res.json({ ok: true, data, guessedType });
   } catch (err: unknown) {
     const e = err as { status?: number; code?: string; message?: string };

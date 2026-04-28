@@ -142,6 +142,31 @@ const fixtures: Fixture[] = [
     expected: "Mohsin M, Ghosh T and Hoque N (2025) 'Prediction and optimization of strength and CO2 emission for geopolymer concrete mix design using machine learning', Results in Materials, 28:1-18, Article 100791, doi:10.1016/j.rinma.2025.100791.",
   },
   {
+    name: 'RMIT Harvard normalizes uploaded reference-list website host',
+    style: 'harvard',
+    source: 'webpage',
+    data: {
+      year: '2024',
+      title: 'The Effects of Art and Culture on Todays Modern Society',
+      siteName: 'blog.creativeflair.org',
+      accessDate: '5 September 2024',
+      url: 'https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/',
+    },
+    expected: 'Creative Flair (2024) The Effects of Art and Culture on Todays Modern Society, Creative Flair website, accessed 5 September 2024. https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/',
+  },
+  {
+    name: 'RMIT Harvard book without place does not invent n.p.',
+    style: 'harvard',
+    source: 'book',
+    data: {
+      authors: [{ family: 'Kraidy', given: 'M' }],
+      year: '2005',
+      title: 'Hybridity: The cultural logic of globalization',
+      publisher: 'Temple University Press',
+    },
+    expected: 'Kraidy M (2005) Hybridity: The cultural logic of globalization, Temple University Press.',
+  },
+  {
     name: 'APA 7th webpage, org author same as site',
     style: 'apa7',
     source: 'webpage',

@@ -394,7 +394,7 @@ async function handleFetch(): Promise<void> {
   setStatus('<span class="spinner"></span> Đang đọc trang web…', 'info');
 
   try {
-    const result = await extractMetadata(url);
+    const result = await extractMetadata(url, state.style);
     if (!result.data) {
       setStatus('⚠ Không trích xuất được dữ liệu. Vui lòng điền thủ công.', 'warn');
       return;

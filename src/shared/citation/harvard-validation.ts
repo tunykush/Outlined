@@ -13,6 +13,31 @@ function has(s: string | undefined | null): boolean { return clean(s || '').leng
 function stripHtml(s: string): string { return s.replace(/<[^>]+>/g, ''); }
 function validAuthors(d: CitationData): boolean { return (d.authors || []).some((a) => has(a.family) || has(a.given)) || has((d as CitationData & { referenceAuthorText?: string }).referenceAuthorText); }
 
+function validHarvardLead(source: SourceType, d: CitationData): boolean {
+  if (validAuthors(d)) return true;
+  if (source === 'legal-act' || source === 'legal-case' || source === 'personal-communication') return true;
+  if (source === 'journal') return has(d.journal);
+  if (source === 'newspaper-online' || source === 'newspaper-print') return has(d.publisher) || has(d.siteName);
+  if (
+    source === 'webpage' ||
+    source === 'webpage-document' ||
+    source === 'wiki-entry' ||
+    source === 'blog-post' ||
+    source === 'report' ||
+    source === 'image'
+  ) return has(d.siteName) || has(d.publisher) || has(d.institution);
+  if (
+    source === 'youtube-video' ||
+    source === 'podcast' ||
+    source === 'streaming-video' ||
+    source === 'lecture-recording' ||
+    source === 'powerpoint-slides' ||
+    source === 'lab-manual' ||
+    source === 'ai-chat'
+  ) return has(d.siteName) || has(d.publisher) || has(d.platform) || has(d.toolName) || has(d.institution);
+  return false;
+}
+
 const ONLINE = new Set<SourceType>([
   'webpage', 'webpage-document', 'wiki-entry', 'newspaper-online', 'report', 'blog-post', 'social-twitter',
   'social-facebook', 'social-instagram', 'social-tiktok', 'youtube-video', 'podcast', 'streaming-video',
@@ -74,7 +99,7 @@ function requiredNotes(source: SourceType, data: CitationData): string[] {
   for (const field of REQUIRED[source] || []) {
     if (!has(String(data[field] || ''))) notes.push(`RMIT Harvard validator warning: missing ${String(field)} for ${source}.`);
   }
-  if (!validAuthors(data) && source !== 'legal-act' && source !== 'legal-case' && source !== 'personal-communication') {
+  if (!validHarvardLead(source, data)) {
     notes.push('RMIT Harvard validator warning: no author/byline detected; reference starts from title/source. Check the page manually.');
   }
   if (!has(data.year) && source !== 'personal-communication') {
@@ -91,7 +116,7 @@ function requiredNotes(source: SourceType, data: CitationData): string[] {
 
 function confidence(source: SourceType, data: CitationData): number {
   let score = 100;
-  if (!validAuthors(data) && source !== 'personal-communication' && source !== 'legal-act' && source !== 'legal-case') score -= 25;
+  if (!validHarvardLead(source, data)) score -= 25;
   if (!has(data.year) && source !== 'personal-communication') score -= 20;
   for (const field of REQUIRED[source] || []) if (!has(String(data[field] || ''))) score -= 15;
   if (source === 'journal' && !has(data.doi) && !has(data.url)) score -= 10;

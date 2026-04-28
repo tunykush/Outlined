@@ -7,11 +7,11 @@
       this.code = code;
     }
   };
-  async function extractMetadata(url) {
+  async function extractMetadata(url, style) {
     const res = await fetch("/api/extract", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url, style })
     });
     let payload = null;
     try {
@@ -486,7 +486,7 @@
     btn.classList.add("is-loading");
     setStatus('<span class="spinner"></span> \u0110ang \u0111\u1ECDc trang web\u2026', "info");
     try {
-      const result = await extractMetadata(url);
+      const result = await extractMetadata(url, state.style);
       if (!result.data) {
         setStatus("\u26A0 Kh\xF4ng tr\xEDch xu\u1EA5t \u0111\u01B0\u1EE3c d\u1EEF li\u1EC7u. Vui l\xF2ng \u0111i\u1EC1n th\u1EE7 c\xF4ng.", "warn");
         return;

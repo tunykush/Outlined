@@ -12,11 +12,11 @@ export class ApiError extends Error {
   }
 }
 
-export async function extractMetadata(url: string): Promise<ExtractResult> {
+export async function extractMetadata(url: string, style?: CitationStyle): Promise<ExtractResult> {
   const res = await fetch('/api/extract', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, style }),
   });
   let payload: ExtractResult | null = null;
   try {

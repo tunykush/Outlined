@@ -9,6 +9,7 @@
 
 import type { Author, CitationData, CitationStyle, SourceType } from '../types.js';
 import { emptyCitationData } from '../citation-engine.js';
+import { hasKnownSiteNameForHost, knownSiteNameForHost } from '../site-names.js';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -23,28 +24,6 @@ const MONTH_LOOKUP: Record<string, string> = Object.fromEntries(
     [String(i + 1).padStart(2, '0'), m],
   ])
 );
-
-const SPECIAL_SITES: Record<string, string> = {
-  'prsa.org': 'PRSA',
-  'npr.org': 'National Public Radio',
-  'reuters.com': 'Reuters',
-  'fortune.com': 'Fortune',
-  'forbes.com': 'Forbes',
-  'counterpointresearch.com': 'Counterpoint',
-  'erm.com': 'ERM',
-  'openai.com': 'OpenAI',
-  'chatgpt.com': 'ChatGPT',
-  'bbc.com': 'BBC News',
-  'bbc.co.uk': 'BBC News',
-  'vnexpress.net': 'VnExpress',
-  'youtube.com': 'YouTube',
-  'youtu.be': 'YouTube',
-  'x.com': 'X',
-  'twitter.com': 'X',
-  'instagram.com': 'Instagram',
-  'facebook.com': 'Facebook',
-  'tiktok.com': 'TikTok',
-};
 
 function clean(s: unknown): string {
   return String(s ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -134,7 +113,8 @@ function hostname(url: string): string {
 
 function titleFromDomain(host: string): string {
   if (!host) return '';
-  if (SPECIAL_SITES[host]) return SPECIAL_SITES[host];
+  const known = knownSiteNameForHost(host);
+  if (known) return known;
   const first = host.split('.')[0] || '';
   if (!first || first === 'www') return '';
   return first
@@ -154,7 +134,7 @@ function isGenericSiteName(s: string): boolean {
 function isGenericHarvardSiteName(s: string, host: string): boolean {
   const v = clean(s).toLowerCase();
   if (!v || v === 'www' || v === 'website' || /^www\./.test(v)) return true;
-  if (/\.[a-z]{2,}(\.[a-z]{2,})?$/.test(v)) return Boolean(SPECIAL_SITES[host]);
+  if (/\.[a-z]{2,}(\.[a-z]{2,})?$/.test(v)) return hasKnownSiteNameForHost(host);
   return false;
 }
 
@@ -267,8 +247,9 @@ export function normalizeCitationData(style: CitationStyle, source: SourceType, 
   const keepIeeeContainerNames = style === 'ieee';
   const genericSiteName = style === 'harvard' ? isGenericHarvardSiteName(d.siteName, host) : isGenericSiteName(d.siteName);
   const genericPublisher = style === 'harvard' ? isGenericHarvardSiteName(d.publisher, host) : isGenericSiteName(d.publisher);
-  if ((!keepIeeeContainerNames || !has(d.siteName) || Boolean(SPECIAL_SITES[host])) && genericSiteName && host) d.siteName = titleFromDomain(host);
-  if ((!keepIeeeContainerNames || !has(d.publisher) || Boolean(SPECIAL_SITES[host])) && genericPublisher && host) d.publisher = titleFromDomain(host);
+  const hasKnownHostName = hasKnownSiteNameForHost(host);
+  if ((!keepIeeeContainerNames || !has(d.siteName) || hasKnownHostName) && genericSiteName && host) d.siteName = titleFromDomain(host);
+  if ((!keepIeeeContainerNames || !has(d.publisher) || hasKnownHostName) && genericPublisher && host) d.publisher = titleFromDomain(host);
   if (!d.siteName && host) d.siteName = titleFromDomain(host);
   // Strip compound site names like "Advisors - Haig Partners" → "Haig Partners"
   // This catches og:site_name values that contain category prefixes before the brand.

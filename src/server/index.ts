@@ -41,10 +41,11 @@ app.get('/api/health', (_req, res) => {
 
 interface ExtractBody {
   url?: string;
+  style?: CitationStyle;
 }
 
 app.post('/api/extract', async (req: Request<unknown, unknown, ExtractBody>, res: Response<ExtractResult>) => {
-  const { url } = req.body || {};
+  const { url, style } = req.body || {};
   if (!url || typeof url !== 'string') {
     return res.status(400).json({ ok: false, code: 'MISSING_URL', message: 'Vui lòng cung cấp URL.' });
   }
@@ -52,7 +53,8 @@ app.post('/api/extract', async (req: Request<unknown, unknown, ExtractBody>, res
   try {
     const parsed = await validateUrlSafety(url.trim());
     const { html, finalUrl } = await fetchHtml(parsed.toString());
-    const { data, guessedType } = await extractMetadata(html, finalUrl || parsed.toString());
+    const extractionStyle = style === 'apa7' || style === 'harvard' || style === 'ieee' ? style : undefined;
+    const { data, guessedType } = await extractMetadata(html, finalUrl || parsed.toString(), extractionStyle);
     return res.json({ ok: true, data, guessedType });
   } catch (err: unknown) {
     const e = err as { status?: number; code?: string; message?: string };

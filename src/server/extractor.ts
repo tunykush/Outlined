@@ -11,8 +11,9 @@
 
 import * as cheerio from 'cheerio';
 import type { CheerioAPI } from 'cheerio';
-import type { Author, CitationData, SourceType } from '../shared/types.js';
+import type { Author, CitationData, CitationStyle, SourceType } from '../shared/types.js';
 import { emptyCitationData } from '../shared/citation-engine.js';
+import { knownSiteNameForHost } from '../shared/site-names.js';
 
 interface ExtractionResult {
   data: Partial<CitationData>;
@@ -569,16 +570,30 @@ function splitDate(raw: string): { year: string; month: string; day: string } {
 function guessType(
   $: CheerioAPI,
   jsonld: ReturnType<typeof parseJsonLd>,
-  baseUrl: string
+  baseUrl: string,
+  style?: CitationStyle
 ): SourceType {
   const host = hostnameOf(baseUrl);
+  const isHarvard = style === 'harvard';
+
+  // A direct PDF URL should not be swallowed by og:type=article from the
+  // lightweight PDF fallback shell.
+  if (/\.pdf(?:\?|$)/i.test(baseUrl)) return 'webpage-document';
 
   // Strong signals first
   if (metaContent($, ['meta[name="citation_journal_title"]', 'meta[name="prism.publicationName"]'])) {
     return 'journal';
   }
-  if (metaContent($, ['meta[name="citation_doi"]'])) return 'journal';
-  if (jsonld.newsArticle) return 'newspaper-online';
+  if (metaContent($, ['meta[name="citation_doi"]'])) {
+    if (isHarvard) {
+      const bookTitle = metaContent($, ['meta[name="citation_book_title"]']);
+      const isbn = metaContent($, ['meta[name="citation_isbn"]']);
+      if (bookTitle) return 'book-chapter';
+      if (isbn) return 'book';
+    }
+    return 'journal';
+  }
+  if (jsonld.newsArticle) return isHarvard ? 'webpage' : 'newspaper-online';
   if (jsonld.article) {
     const types = ([] as string[]).concat(jsonld.article['@type'] || []);
     if (types.some((t) => /report/i.test(t))) return 'report';
@@ -596,7 +611,7 @@ function guessType(
   if (/tiktok\.com/.test(host)) return 'social-tiktok';
   if (/medium\.com|substack\.com|wordpress\.com|blogspot\./.test(host)) return 'blog-post';
   if (/(news|times|guardian|herald|post|tribune|nytimes|bbc|cnn|reuters|smh|theage)/i.test(host)) {
-    return 'newspaper-online';
+    return isHarvard ? 'webpage' : 'newspaper-online';
   }
 
   // og:type=article is common for normal website articles; do not force it to newspaper.
@@ -605,15 +620,12 @@ function guessType(
   if (/video/i.test(og)) return 'streaming-video';
   if (/article/i.test(og)) return 'webpage';
 
-  // PDF reports / webpage documents
-  if (/\.pdf(\?|$)/i.test(baseUrl)) return 'report';
-
   return 'webpage';
 }
 
 /* ---------- main extractor ---------- */
 
-export async function extractMetadata(html: string, baseUrl: string): Promise<ExtractionResult> {
+export async function extractMetadata(html: string, baseUrl: string, style?: CitationStyle): Promise<ExtractionResult> {
   const $ = cheerio.load(html);
   const jsonld = parseJsonLd($);
   // Readability runs in parallel with Cheerio — it parses the article body to
@@ -643,6 +655,7 @@ export async function extractMetadata(html: string, baseUrl: string): Promise<Ex
     jsonld.website?.name,
     metaContent($, ['meta[name="application-name"]']),
     rdbl.siteName,
+    knownSiteNameForHost(host),
     inferSiteNameFromTitle(rawTitle),
     host
   );
@@ -756,7 +769,7 @@ export async function extractMetadata(html: string, baseUrl: string): Promise<Ex
   ];
   data.accessDate = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
-  const guessedType = guessType($, jsonld, baseUrl);
+  const guessedType = guessType($, jsonld, baseUrl, style);
 
   return { data, guessedType };
 }

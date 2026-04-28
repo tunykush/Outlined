@@ -26,12 +26,36 @@ function validPeopleForStyle(style: CitationStyle): (authors: CitationData['auth
   return apa7Internals.validPeople;
 }
 
+function hasHarvardLeadFallback(source: SourceType, data: CitationData): boolean {
+  if (source === 'journal') return has(data.journal);
+  if (source === 'newspaper-online' || source === 'newspaper-print') return has(data.publisher) || has(data.siteName);
+  if (
+    source === 'webpage' ||
+    source === 'webpage-document' ||
+    source === 'wiki-entry' ||
+    source === 'blog-post' ||
+    source === 'report' ||
+    source === 'image'
+  ) return has(data.siteName) || has(data.publisher) || has(data.institution);
+  if (
+    source === 'youtube-video' ||
+    source === 'podcast' ||
+    source === 'streaming-video' ||
+    source === 'lecture-recording' ||
+    source === 'powerpoint-slides' ||
+    source === 'lab-manual' ||
+    source === 'ai-chat'
+  ) return has(data.siteName) || has(data.publisher) || has(data.platform) || has(data.toolName) || has(data.institution);
+  return false;
+}
+
 function styleNotes(style: CitationStyle, source: SourceType, data: CitationData): string[] {
   const notes: string[] = [];
   const validPeople = validPeopleForStyle(style);
-  const hasAuthor = validPeople(data.authors).length > 0;
+  const hasAuthor = validPeople(data.authors).length > 0 || has(data.referenceAuthorText);
+  const hasStyleLead = style === 'harvard' && hasHarvardLeadFallback(source, data);
 
-  if (!hasAuthor && source !== 'legal-act' && source !== 'legal-case' && source !== 'personal-communication') {
+  if (!hasAuthor && !hasStyleLead && source !== 'legal-act' && source !== 'legal-case' && source !== 'personal-communication') {
     if (style === 'harvard') {
       notes.push('No author detected - RMIT Harvard starts the reference with the title or source name, depending on source type.');
     } else if (style === 'ieee') {

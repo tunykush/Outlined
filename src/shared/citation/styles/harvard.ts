@@ -403,7 +403,7 @@ function harvardBook(d: CitationData): string {
   if (edition) parts.push(esc(edition));
   if (has(d.publisher)) parts.push(esc(clean(d.publisher)));
   if (has(d.doi)) parts.push(doiHarvard(d.doi));
-  else parts.push(esc(clean(d.place || 'n.p.')));
+  else if (has(d.place)) parts.push(esc(clean(d.place)));
   return endFullStop(joinNonEmpty(parts));
 }
 
@@ -416,7 +416,7 @@ function harvardTranslatedBook(d: CitationData): string {
   if (edition) parts.push(esc(edition));
   if (has(d.publisher)) parts.push(esc(clean(d.publisher)));
   if (has(d.doi)) parts.push(doiHarvard(d.doi));
-  else parts.push(esc(clean(d.place || 'n.p.')));
+  else if (has(d.place)) parts.push(esc(clean(d.place)));
   if (has(d.originalYear)) parts.push(`original work published ${esc(clean(d.originalYear))}`);
   return endFullStop(joinNonEmpty(parts));
 }
@@ -434,9 +434,10 @@ function harvardBookChapter(d: CitationData): string {
   ];
   const edition = edn(d.edition);
   if (edition) parts.push(esc(edition));
+  if (has(d.pages)) parts.push(esc(clean(d.pages)));
   if (has(d.publisher)) parts.push(esc(clean(d.publisher)));
   if (has(d.doi)) parts.push(doiHarvard(d.doi));
-  else parts.push(esc(clean(d.place || 'n.p.')));
+  else if (has(d.place)) parts.push(esc(clean(d.place)));
   return endFullStop(joinNonEmpty(parts));
 }
 
