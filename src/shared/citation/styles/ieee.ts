@@ -168,6 +168,11 @@ function publisherName(d: CitationData): string {
   return clean(d.publisher || d.siteName || d.platform || d.institution);
 }
 
+function siteOrPublisherName(d: CitationData): string {
+  const raw = clean(d.siteName || d.publisher || d.platform || d.institution);
+  return raw.replace(/^Bao\s+/i, '').replace(/^B[aá]o\s+/i, '').replace(/\.net$/i, '');
+}
+
 function titleText(d: CitationData, fallback = 'Title needed'): string {
   return clean(d.title) || fallback;
 }
@@ -186,6 +191,11 @@ function doi(rawDoi: string): string {
 
 function onlineAvailable(url: string): string {
   return has(url) ? `[Online]. Available: ${esc(clean(url))}` : '[Online]. Available: URL needed';
+}
+
+function onlineAvailableAccessed(d: CitationData): string {
+  const available = has(d.url) ? esc(clean(d.url)) : 'URL needed';
+  return `[Online]. Available: ${available}. [Accessed: ${esc(ieeeAccessDate(d))}].`;
 }
 
 function ref(s: string): string {
@@ -214,6 +224,13 @@ function articleLocator(d: CitationData): string {
   if (has(d.pages)) return pagesText(d.pages);
   if (has(d.articleNumber)) return `Article ${esc(clean(d.articleNumber).replace(/^Article\s+/i, ''))}`;
   return '';
+}
+
+function yearOrAccessYear(d: CitationData): string {
+  if (has(d.year)) return clean(d.year);
+  const access = clean(d.accessDate);
+  const m = access.match(/\b(19|20)\d{2}\b/);
+  return m?.[0] || 'year needed';
 }
 
 function bookLike(d: CitationData, translated = false): string {
@@ -292,14 +309,15 @@ function ieeeReport(d: CitationData): string {
 }
 
 function ieeeWebpage(d: CitationData): string {
-  const site = clean(d.siteName || d.publisher || d.platform || d.institution) || 'Website title needed';
+  const site = siteOrPublisherName(d) || 'Website title needed';
   const author = authorsIEEE(d.authors) || site;
-  const out = ref(`${author}. ${quotedTitleWith(d, '.', 'Webpage title needed')} ${esc(site)}. Accessed: ${esc(ieeeAccessDate(d))}. ${onlineAvailable(d.url)}`);
-  return noFinalPeriodAfterUrl(out);
+  return ref(`${author}, ${quotedTitleWith(d, ',', 'Webpage title needed')} ${esc(site)}, ${esc(yearOrAccessYear(d))}. ${onlineAvailableAccessed(d)}`);
 }
 
 function ieeeNewspaperOnline(d: CitationData): string {
-  return ieeeWebpage(d);
+  const publication = siteOrPublisherName(d) || 'Publication needed';
+  const author = authorsIEEE(d.authors) || publication;
+  return ref(`${author}, ${quotedTitleWith(d, ',', 'Article title needed')} ${ital(esc(publication))}, ${esc(yearOrAccessYear(d))}. ${onlineAvailableAccessed(d)}`);
 }
 
 function ieeeNewspaperPrint(d: CitationData): string {

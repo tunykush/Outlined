@@ -101,8 +101,8 @@ function parseJsonLd($: CheerioAPI): {
         const types = ([] as string[]).concat(node['@type'] || []);
         for (const t of types) {
           const tl = String(t).toLowerCase();
-          if (/^newsarticle$/.test(tl)) result.newsArticle ||= node;
-          if (/^(article|blogposting|scholarlyarticle|techarticle|report)$/.test(tl)) {
+          if (/newsarticle$/.test(tl)) result.newsArticle ||= node;
+          if (/^(article|blogposting|scholarlyarticle|techarticle|report)$/.test(tl) || /article$/i.test(tl)) {
             result.article ||= node;
           }
           if (tl === 'webpage' && !result.article) result.article ||= node;
@@ -132,7 +132,7 @@ function splitName(raw: string): Author {
   }
   // Heuristic for organisations.
   const orgRegex =
-    /\b(inc\.?|ltd\.?|llc|university|department|bureau|institute|association|society|foundation|federation|ministry|agency|corp\.?|company|group|news|press|times|herald|gazette|tribune|post|wiki|library|museum|gallery)\b/i;
+    /\b(inc\.?|ltd\.?|llc|university|department|bureau|institute|association|society|foundation|federation|ministry|agency|corp\.?|company|group|news|press|times|herald|gazette|tribune|post|wiki|library|museum|gallery|bbc|vnexpress|fandom)\b/i;
   if (orgRegex.test(s) || s.split(/\s+/).length >= 5) return { family: s, given: '', isOrganisation: true };
 
   const parts = s.split(' ');
@@ -320,6 +320,7 @@ function shouldIgnoreAuthor(raw: string): boolean {
   if (!s) return true;
   if (/^https?:/i.test(s)) return true;
   if (/contributors?\s+to/i.test(s)) return true;
+  if (/^(in|from|at)\s+/i.test(s)) return true;
   if (/^(wiki|fandom|admin|administrator|staff|editorial team)$/i.test(s)) return true;
   if (/^by\s*$/i.test(s)) return true;
   return false;
@@ -330,6 +331,7 @@ function cleanBylineName(raw: string): string {
     .replace(/\bby\b\s*/i, '')
     .replace(/\b(written|posted|published)\s+by\b\s*/i, '')
     .replace(/\b(APR|PhD|Ph\.D\.?|MBA|MA|MSc|Dr\.?|Prof\.?|Professor)\b\.?/gi, '')
+    .replace(/\s*,\s*(?:in|from|at)\s+[^,;|]+(?:,\s*[^,;|]+)?/gi, '')
     .replace(/\s*,\s*(and\b)/gi, ' $1')
     .replace(/\s*,\s*$/g, '')
     .replace(/\s+/g, ' ')
@@ -344,6 +346,18 @@ function splitAuthorList(raw: string): string[] {
     .split(/\s+(?:and)\s+|\s*;\s*|\s*\|\s*|\n+/i)
     .map(cleanBylineName)
     .filter(Boolean);
+}
+
+function splitMetadataAuthors(raw: string): string[] {
+  const s = cleanBylineName(raw);
+  if (!s) return [];
+  if (raw.includes('|')) {
+    return raw
+      .split('|')
+      .map(cleanBylineName)
+      .filter((part) => part && !shouldIgnoreAuthor(part) && !/^(california|australia|united states|uk|u\.k\.)$/i.test(part));
+  }
+  return splitAuthorList(s);
 }
 
 function extractVisibleBylineAuthors($: CheerioAPI): Author[] {
@@ -404,18 +418,39 @@ async function extractAuthors(
 ): Promise<Author[]> {
   const seen = new Set<string>();
   const out: Author[] = [];
-  const add = (raw: string): void => {
-    const cleaned = raw.trim();
+  const add = (raw: string, isOrganisation = false): void => {
+    const cleaned = cleanBylineName(raw.trim());
     if (!cleaned || cleaned.length < 2) return;
     if (shouldIgnoreAuthor(cleaned)) return;
     const key = cleaned.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    out.push(splitName(cleaned));
+    const author = splitName(cleaned);
+    if (isOrganisation) author.isOrganisation = true;
+    out.push(author);
+  };
+  const addMany = (raw: string): void => {
+    const names = splitMetadataAuthors(raw);
+    if (names.length) names.forEach((name) => add(name));
+    else add(raw);
   };
 
   // 1. citation_author (highest priority for academic content)
-  metaContentAll($, 'meta[name="citation_author"]').forEach(add);
+  metaContentAll($, 'meta[name="citation_author"]').forEach((value) => add(value));
+
+  // 1b. News/CMS-specific author meta. BBC, VnExpress, and other news sites
+  // often put cleaner machine-readable bylines here than in visible DOM text.
+  const metaAuthor = metaContent($, [
+    'meta[property="cXenseParse:author"]',
+    'meta[name="cXenseParse:author"]',
+    'meta[name="author"]',
+    'meta[property="article:author"]',
+    'meta[name="parsely-author"]',
+    'meta[name="sailthru.author"]',
+    'meta[name="dc.creator"]',
+    'meta[name="DC.creator"]',
+  ]);
+  if (metaAuthor) addMany(metaAuthor);
 
   // 2. JSON-LD article author
   const node = jsonld.newsArticle || jsonld.article || jsonld.book;
@@ -423,24 +458,24 @@ async function extractAuthors(
     const list = Array.isArray(node.author) ? node.author : [node.author];
     for (const a of list) {
       if (typeof a === 'string') add(a);
-      else if (a && typeof a === 'object' && a.name) add(a.name);
+      else if (a && typeof a === 'object' && a.name) {
+        const types = ([] as string[]).concat(a['@type'] || []);
+        add(a.name, types.some((t) => /organization/i.test(t)));
+      }
     }
   }
 
   // 3. article:author (Open Graph)
-  metaContentAll($, 'meta[property="article:author"]').forEach(add);
+  metaContentAll($, 'meta[property="article:author"]').forEach((value) => add(value));
 
   // 4. classic meta author
   if (out.length === 0) {
     const a = metaContent($, [
-      'meta[name="author"]',
       'meta[name="dc.creator"]',
       'meta[name="DC.creator"]',
-      'meta[name="parsely-author"]',
-      'meta[name="sailthru.author"]',
     ]);
     if (a) {
-      if (/[;|\n]/.test(a)) a.split(/\s*(?:;|\||\n)\s*/).forEach(add);
+      if (/[;|\n]/.test(a)) a.split(/\s*(?:;|\||\n)\s*/).forEach((value) => add(value));
       else add(a);
     }
   }
@@ -479,6 +514,27 @@ function splitDate(raw: string): { year: string; month: string; day: string } {
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
   ];
+
+  if (/T.*(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw.trim())) {
+    const dt = new Date(raw);
+    if (!isNaN(dt.getTime())) {
+      try {
+        const parts = new Intl.DateTimeFormat('en-AU', {
+          timeZone: 'Australia/Sydney',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }).formatToParts(dt);
+        return {
+          year: parts.find((p) => p.type === 'year')?.value || '',
+          month: parts.find((p) => p.type === 'month')?.value || '',
+          day: parts.find((p) => p.type === 'day')?.value || '',
+        };
+      } catch {
+        /* fall through */
+      }
+    }
+  }
 
   const numeric = raw.trim().match(/^(\d{1,4})[\/-](\d{1,2})[\/-](\d{1,4})/);
   if (numeric) {
@@ -609,6 +665,10 @@ export async function extractMetadata(html: string, baseUrl: string): Promise<Ex
     typeof jsonld.article?.publisher === 'object' ? jsonld.article?.publisher?.name : '',
     data.siteName
   );
+  if (/^vnexpress\.net$/i.test(host)) {
+    data.siteName = 'VnExpress';
+    data.publisher = 'VnExpress';
+  }
 
   // Date: reliable publication date signals only — never fall back to modification date.
   // Priority: explicit meta > JSON-LD datePublished > schema.org microdata <time> >
@@ -624,6 +684,12 @@ export async function extractMetadata(html: string, baseUrl: string): Promise<Ex
     // the first time[datetime] (which might be a comment timestamp)
     extractTimeElements($),
     metaContent($, [
+      'meta[name="cXenseParse:publishtime"]',
+      'meta[property="cXenseParse:publishtime"]',
+      'meta[itemprop="pubdate"]',
+      'meta[name="pubdate"]',
+      'meta[itemprop="datePublished"]',
+      'meta[name="dateCreated"]',
       'meta[name="datePublished"]',
       'meta[name="date"]',
       'meta[name="dc.date"]',
