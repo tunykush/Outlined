@@ -726,8 +726,8 @@ input, textarea, select { font-family: inherit; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   background: none;
   border: 1px solid var(--border-warm);
@@ -735,6 +735,13 @@ input, textarea, select { font-family: inherit; }
   color: var(--stone-gray);
   cursor: pointer;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+@media (min-width: 480px) {
+  .refine-toggle {
+    width: 30px;
+    height: 30px;
+  }
 }
 
 .refine-toggle:hover {
