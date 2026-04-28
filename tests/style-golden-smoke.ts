@@ -95,7 +95,7 @@ const fixtures: Fixture[] = [
       pages: '2250–2268',
       doi: '10.1002/bse.3596',
     },
-    expected: "Abdullah A, Yamak S, Korzhenitskaya A, Rahimi R and McClellan J (2023) 'Sustainable development: The role of sustainability committees in achieving ESG targets', Business Strategy and the Environment, 33(3):2250–2268, doi:10.1002/bse.3596.",
+    expected: "Abdullah A, Yamak S, Korzhenitskaya A, Rahimi R and McClellan J (2023) ‘Sustainable development: The role of sustainability committees in achieving ESG targets’, Business Strategy and the Environment, 33(3):2250–2268, doi:10.1002/bse.3596.",
   },
   {
     name: 'RMIT Harvard journal keeps full six-author reference list',
@@ -116,7 +116,7 @@ const fixtures: Fixture[] = [
       volume: '14',
       doi: '10.3389/fpsyg.2023.1268091',
     },
-    expected: "Meng JJ, Wang XD, Xie MY, Hao ZL, Yang JL and Liu YB (2023) 'Ethical leadership and TMT decision-making of corporate social responsibility - a perspective of self-determination theory', Frontiers in Psychology, 14, doi:10.3389/fpsyg.2023.1268091.",
+    expected: "Meng JJ, Wang XD, Xie MY, Hao ZL, Yang JL and Liu YB (2023) ‘Ethical leadership and TMT decision-making of corporate social responsibility - a perspective of self-determination theory’, Frontiers in Psychology, 14, doi:10.3389/fpsyg.2023.1268091.",
   },
   {
     name: 'RMIT Harvard journal with DOI',
@@ -128,7 +128,7 @@ const fixtures: Fixture[] = [
       journal: 'International Journal of Production Economics', volume: '140', issue: '1', pages: '149–159',
       doi: '10.1016/j.ijpe.2012.01.035',
     },
-    expected: "Gimenez C, Sierra V and Rodon J (2012) 'Sustainable operations: their impact on the triple bottom line', International Journal of Production Economics, 140(1):149–159, doi:10.1016/j.ijpe.2012.01.035.",
+    expected: "Gimenez C, Sierra V and Rodon J (2012) ‘Sustainable operations: their impact on the triple bottom line’, International Journal of Production Economics, 140(1):149–159, doi:10.1016/j.ijpe.2012.01.035.",
   },
   {
     name: 'RMIT Harvard journal with pages and article number',
@@ -139,7 +139,7 @@ const fixtures: Fixture[] = [
       year: '2025', title: 'Prediction and optimization of strength and CO2 emission for geopolymer concrete mix design using machine learning',
       journal: 'Results in Materials', volume: '28', pages: '1-18', articleNumber: '100791', doi: '10.1016/j.rinma.2025.100791',
     },
-    expected: "Mohsin M, Ghosh T and Hoque N (2025) 'Prediction and optimization of strength and CO2 emission for geopolymer concrete mix design using machine learning', Results in Materials, 28:1-18, Article 100791, doi:10.1016/j.rinma.2025.100791.",
+    expected: "Mohsin M, Ghosh T and Hoque N (2025) ‘Prediction and optimization of strength and CO2 emission for geopolymer concrete mix design using machine learning’, Results in Materials, 28:1-18, Article 100791, doi:10.1016/j.rinma.2025.100791.",
   },
   {
     name: 'RMIT Harvard normalizes uploaded reference-list website host',

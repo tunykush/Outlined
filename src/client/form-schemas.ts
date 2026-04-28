@@ -70,7 +70,6 @@ const F = {
 };
 
 const QUOTE_FIELDS = [F.quotePage, F.quotePages, F.quoteSection, F.quoteParagraph];
-const URL_FIELD = [F.url];
 
 /** Schema for each source type — order matters for display. */
 export const FORM_SCHEMAS: Record<SourceType, FieldDef[]> = {

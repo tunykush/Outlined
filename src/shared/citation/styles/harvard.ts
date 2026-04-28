@@ -22,6 +22,8 @@ const has = (s: string | undefined | null): boolean => clean(s || '').length > 0
 const endFullStop = (s: string): string => /[.!?]$/.test(stripHtml(s).trim()) ? s.trim() : `${s.trim()}.`;
 const joinNonEmpty = (parts: string[], sep = ', '): string => parts.filter((p) => has(stripHtml(p))).join(sep);
 const noFinalPeriodAfterUrl = (s: string): string => s.trim().replace(/(https?:\/\/\S+)\.$/i, '$1');
+const LQ = '‘';
+const RQ = '’';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -38,6 +40,16 @@ function initialsNoStops(given: string): string {
     .filter(Boolean)
     .map((part) => part.replace(/\./g, '').split('-').filter(Boolean).map((p) => p[0]?.toUpperCase() || '').join(''))
     .join('');
+}
+
+function smartSingleQuotes(raw: string): string {
+  return clean(raw)
+    .replace(/(^|[\s([{])'/g, `$1${LQ}`)
+    .replace(/'/g, RQ);
+}
+
+function quotedTitle(raw: string, fallback: string): string {
+  return `${LQ}${esc(smartSingleQuotes(raw) || fallback)}${RQ}`;
 }
 
 function validPeople(authors: Author[] = []): Author[] {
@@ -228,7 +240,7 @@ function noAuthorText(d: CitationData, source: SourceType): string {
   if (source === 'newspaper-online' || source === 'newspaper-print') return clean(d.publisher || d.siteName || d.title || 'Title');
   if (source === 'ai-chat') return clean(d.publisher || d.toolName || d.title || 'OpenAI');
   const snippet = esc(titleSnippet(d));
-  return ITALIC_NO_AUTHOR_IN_TEXT.has(source) ? ital(snippet) : `'${snippet}'`;
+  return ITALIC_NO_AUTHOR_IN_TEXT.has(source) ? ital(snippet) : `${LQ}${snippet}${RQ}`;
 }
 
 function quoteLocatorHarvard(d: CitationData, source: SourceType): string {
@@ -340,7 +352,7 @@ function harvardWikiEntry(d: CitationData): string {
 }
 
 function harvardNewsOnline(d: CitationData): string {
-  const title = `'${esc(clean(d.title) || 'Untitled article')}'`;
+  const title = quotedTitle(d.title, 'Untitled article');
   const author = authorsHarvard(d.authors);
   const pub = clean(d.publisher || d.siteName || 'Newspaper or magazine');
   let out = author
@@ -352,7 +364,7 @@ function harvardNewsOnline(d: CitationData): string {
 }
 
 function harvardNewsPrint(d: CitationData): string {
-  const title = `'${esc(clean(d.title) || 'Untitled article')}'`;
+  const title = quotedTitle(d.title, 'Untitled article');
   const author = authorsHarvard(d.authors);
   const pub = clean(d.publisher || d.siteName || 'Newspaper or magazine');
   let out = author
@@ -378,7 +390,7 @@ function journalLocator(d: CitationData): string {
 }
 
 function harvardJournal(d: CitationData): string {
-  const title = `'${esc(clean(d.title) || 'Untitled article')}'`;
+  const title = quotedTitle(d.title, 'Untitled article');
   const author = authorsHarvard(d.authors);
   const journalName = clean(d.journal || 'Journal title');
   let out = author
@@ -423,7 +435,7 @@ function harvardTranslatedBook(d: CitationData): string {
 
 function harvardBookChapter(d: CitationData): string {
   const author = authorsHarvard(d.authors);
-  const chapterTitle = `'${esc(clean(d.title) || 'Untitled chapter')}'`;
+  const chapterTitle = quotedTitle(d.title, 'Untitled chapter');
   const lead = author ? `${esc(author)} ${dateYear(d)} ` : `${chapterTitle} ${dateYear(d)} `;
   const editors = peopleTextHarvard(d.editors, d.editorsText);
   const editorLabel = (validPeople(d.editors).length + parsePeople(d.editorsText).length) === 1 ? 'ed' : 'eds';
@@ -458,7 +470,7 @@ function harvardReport(d: CitationData): string {
 function harvardBlogPost(d: CitationData): string {
   const author = authorsHarvard(d.authors);
   const blog = clean(d.siteName || d.publisher || 'Blog');
-  const title = `'${esc(clean(d.title) || 'Untitled post')}'`;
+  const title = quotedTitle(d.title, 'Untitled post');
   let out = author
     ? `${esc(author)} ${dateFull(d)} ${title}, ${ital(esc(blog))}`
     : `${esc(blog)} ${dateFull(d)} ${title}, ${ital(esc(blog))}`;
@@ -477,7 +489,7 @@ function harvardSocial(d: CitationData, defaultPostType: string): string {
   const title = firstWords(d.title || 'Untitled post', 10);
   const type = clean(d.postType || defaultPostType);
   const page = clean(d.siteName || d.publisher || d.username || author);
-  let out = `${esc(author)} ${dateFull(d)} '${esc(title)}' [${esc(type)}], ${esc(page)}, ${accessPart(d)}`;
+  let out = `${esc(author)} ${dateFull(d)} ${quotedTitle(title, 'Untitled post')} [${esc(type)}], ${esc(page)}, ${accessPart(d)}`;
   return appendUrl(out, d.url);
 }
 
@@ -485,7 +497,7 @@ function harvardYouTube(d: CitationData): string {
   const author = authorsHarvard(d.authors) || clean(d.siteName || d.publisher || 'Channel name');
   const channel = clean(d.siteName || d.publisher || author);
   const website = clean(d.platform || 'YouTube');
-  let out = `${esc(author)} ${dateFull(d)} '${esc(clean(d.title) || 'Untitled video')}' [video], ${esc(channel)}, ${esc(websiteName({ ...d, siteName: website, publisher: '', platform: '' }))}, ${accessPart(d)}`;
+  let out = `${esc(author)} ${dateFull(d)} ${quotedTitle(d.title, 'Untitled video')} [video], ${esc(channel)}, ${esc(websiteName({ ...d, siteName: website, publisher: '', platform: '' }))}, ${accessPart(d)}`;
   return appendUrl(out, d.url);
 }
 
@@ -510,7 +522,7 @@ function harvardPodcast(d: CitationData): string {
     : `${esc(hosts)} (${hostRole})`;
   const series = ital(esc(clean(d.seriesTitle || d.publisher || d.siteName || 'Podcast series')));
   const network = clean(d.platform || d.publisher || d.siteName || 'Podcast network');
-  let out = `${lead} ${dateFull(d)} '${esc(clean(d.title) || 'Untitled episode')}' [podcast], ${series}, ${esc(network)}, ${accessPart(d)}`;
+  let out = `${lead} ${dateFull(d)} ${quotedTitle(d.title, 'Untitled episode')} [podcast], ${series}, ${esc(network)}, ${accessPart(d)}`;
   return appendUrl(out, d.url);
 }
 
@@ -518,7 +530,7 @@ function harvardStreamingVideo(d: CitationData): string {
   const author = authorsHarvard(d.authors) || clean(d.publisher || d.siteName || 'Creator');
   const channel = clean(d.siteName || d.publisher || author);
   const website = websiteName(d) || 'Website website';
-  let out = `${esc(author)} ${dateFull(d)} '${esc(clean(d.title) || 'Untitled video')}' [video], ${esc(channel)}, ${esc(website)}, ${accessPart(d)}`;
+  let out = `${esc(author)} ${dateFull(d)} ${quotedTitle(d.title, 'Untitled video')} [video], ${esc(channel)}, ${esc(website)}, ${accessPart(d)}`;
   return appendUrl(out, d.url);
 }
 
@@ -527,14 +539,14 @@ function harvardTvSeries(d: CitationData): string {
   const creator = authorsHarvard(d.authors);
   const role = clean(d.hostRole || 'producer').toLowerCase();
   const companies = clean(d.productionCompanies || d.publisher);
-  const parts = [creator ? `${esc(creator)} (${esc(role)}) ${dateYear(d)} '${esc(title)}' [television program]` : `'${esc(title)}' ${dateYear(d)} [television program]`];
+  const parts = [creator ? `${esc(creator)} (${esc(role)}) ${dateYear(d)} ${quotedTitle(title, 'Untitled television program')} [television program]` : `${quotedTitle(title, 'Untitled television program')} ${dateYear(d)} [television program]`];
   if (companies) parts.push(esc(companies));
   if (has(d.place)) parts.push(esc(clean(d.place)));
   return endFullStop(joinNonEmpty(parts));
 }
 
 function harvardTvEpisode(d: CitationData): string {
-  const title = `'${esc(clean(d.title) || 'Untitled episode')}'`;
+  const title = quotedTitle(d.title, 'Untitled episode');
   const series = ital(esc(clean(d.seriesTitle) || 'Series title'));
   const creator = peopleTextHarvard(d.authors, d.directorsText || d.producersText || d.writersText);
   const role = clean(d.hostRole || (d.directorsText ? 'director' : 'producer')).toLowerCase();
@@ -563,7 +575,7 @@ function harvardImage(d: CitationData): string {
 
 function harvardCourseMaterial(d: CitationData, defaultFormat: string): string {
   const author = authorsHarvard(d.authors) || clean(d.institution || d.publisher || 'RMIT University');
-  const title = `'${esc(clean(d.title) || 'Untitled course material')}'`;
+  const title = quotedTitle(d.title, 'Untitled course material');
   const format = clean(d.format || defaultFormat);
   const institution = clean(d.platform || d.institution || d.publisher || 'RMIT University');
   const parts = [`${esc(author)} ${dateYear(d)} ${title} [${esc(format)}]`, esc(institution)];

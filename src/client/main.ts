@@ -376,6 +376,10 @@ async function regenerate(): Promise<void> {
  * EXTRACT — fetch + parse from URL
  * ============================================================ */
 
+function isReferenceIdentifierInput(value: string): boolean {
+  return /^(?:doi:\s*)?10\.\d{4,9}\/\S+$/i.test(value) || /^(?:pmid:\s*)?\d{6,9}$/i.test(value);
+}
+
 async function handleFetch(): Promise<void> {
   const input = $('urlInput') as HTMLInputElement;
   const url = input.value.trim();
@@ -383,15 +387,17 @@ async function handleFetch(): Promise<void> {
     setStatus('Hãy paste một URL.', 'warn');
     return;
   }
-  if (!/^https?:\/\//i.test(url)) {
-    setStatus('URL phải bắt đầu bằng http:// hoặc https://', 'warn');
+  const isUrl = /^https?:\/\//i.test(url);
+  const isIdentifier = isReferenceIdentifierInput(url);
+  if (!isUrl && !isIdentifier) {
+    setStatus('URL phải bắt đầu bằng http:// hoặc https://, hoặc nhập DOI/PubMed ID hợp lệ.', 'warn');
     return;
   }
 
   const btn = $('fetchBtn') as HTMLButtonElement;
   btn.disabled = true;
   btn.classList.add('is-loading');
-  setStatus('<span class="spinner"></span> Đang đọc trang web…', 'info');
+  setStatus(`<span class="spinner"></span> ${isIdentifier ? 'Đang đọc metadata học thuật…' : 'Đang đọc trang web…'}`, 'info');
 
   try {
     const result = await extractMetadata(url, state.style);
@@ -436,6 +442,7 @@ async function handleFetch(): Promise<void> {
       INVALID_PROTOCOL: 'Chỉ chấp nhận http/https',
       BLOCKED_HOST: 'URL nội bộ bị chặn',
       DNS_FAIL: 'Không tìm thấy domain',
+      IDENTIFIER_LOOKUP_FAIL: 'Không tìm được metadata cho DOI/PubMed',
       TIMEOUT: 'Quá thời gian phản hồi',
       TOO_LARGE: 'Trang quá lớn',
       NOT_HTML: 'Không phải trang HTML',

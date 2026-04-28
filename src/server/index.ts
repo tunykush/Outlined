@@ -20,6 +20,7 @@ import { generate } from '../shared/citation-engine.js';
 import { validateUrlSafety } from './safety.js';
 import { fetchHtml } from './fetcher.js';
 import { extractMetadata } from './extractor.js';
+import { doiUrl, lookupReferenceIdentifier, parseReferenceIdentifier } from './reference-lookup.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,7 +52,24 @@ app.post('/api/extract', async (req: Request<unknown, unknown, ExtractBody>, res
   }
 
   try {
-    const parsed = await validateUrlSafety(url.trim());
+    const rawInput = url.trim();
+    const identifier = parseReferenceIdentifier(rawInput);
+    if (identifier) {
+      const lookedUp = await lookupReferenceIdentifier(identifier);
+      if (lookedUp) return res.json({ ok: true, data: lookedUp.data, guessedType: lookedUp.guessedType });
+      if (!identifier.fromUrl) {
+        return res.status(502).json({
+          ok: false,
+          code: 'IDENTIFIER_LOOKUP_FAIL',
+          message: identifier.kind === 'doi'
+            ? 'Không tìm được metadata cho DOI này.'
+            : 'Không tìm được metadata cho PubMed ID này.',
+        });
+      }
+    }
+
+    const fetchTarget = identifier?.kind === 'doi' ? doiUrl(identifier.value) : rawInput;
+    const parsed = await validateUrlSafety(fetchTarget);
     const { html, finalUrl } = await fetchHtml(parsed.toString());
     const extractionStyle = style === 'apa7' || style === 'harvard' || style === 'ieee' ? style : undefined;
     const { data, guessedType } = await extractMetadata(html, finalUrl || parsed.toString(), extractionStyle);

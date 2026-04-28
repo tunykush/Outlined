@@ -11,6 +11,8 @@ import { generateIeee, ieeeInternals } from './styles/ieee.js';
 import { validateAndRepairHarvard } from './harvard-validation.js';
 import { validateAndRepairApa7 } from './apa-validation.js';
 import { normalizeCitationData } from './normalize.js';
+import { metascanHarvard } from './harvard-metascan.js';
+import { metascanApa7 } from './apa-metascan.js';
 
 function clean(s: string = ''): string {
   return String(s).replace(/\s+/g, ' ').trim();
@@ -115,9 +117,17 @@ export function generate(
   let output: CitationOutput;
 
   if (style === 'apa7') {
-    output = validateAndRepairApa7(source, normalizedData, generateApa7(source, normalizedData));
+    output = metascanApa7(
+      source,
+      normalizedData,
+      validateAndRepairApa7(source, normalizedData, generateApa7(source, normalizedData))
+    );
   } else if (style === 'harvard') {
-    output = validateAndRepairHarvard(source, normalizedData, generateHarvard(source, normalizedData));
+    output = metascanHarvard(
+      source,
+      normalizedData,
+      validateAndRepairHarvard(source, normalizedData, generateHarvard(source, normalizedData))
+    );
   } else if (style === 'ieee') {
     output = generateIeee(source, normalizedData);
   } else {

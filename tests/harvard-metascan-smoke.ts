@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
 import { extractMetadata } from '../src/server/extractor.js';
+import { emptyCitationData, generate } from '../src/shared/citation-engine.js';
+import { metascanHarvard } from '../src/shared/citation/harvard-metascan.js';
+
+function strip(html: string): string {
+  return html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+}
 
 const newsHtml = `<!doctype html>
 <html>
@@ -49,5 +55,64 @@ const creativeFlair = await extractMetadata(
 );
 assert.equal(creativeFlair.guessedType, 'webpage');
 assert.equal(creativeFlair.data.siteName, 'Creative Flair');
+
+const base = emptyCitationData();
+const webData = {
+  ...base,
+  year: '2024',
+  title: 'The Effects of Art and Culture on Todays Modern Society',
+  siteName: 'Creative Flair',
+  publisher: 'Creative Flair',
+  accessDate: '5 September 2024',
+  url: 'https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/',
+};
+
+const repaired = metascanHarvard('webpage', webData, {
+  reference: 'Creative Flair. (2024). The Effects of Art and Culture on Todays Modern Society, Creative Flair, accessed September 5, 2024. https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/.',
+  intextParaphrase: '',
+  intextQuote: '',
+  intextNarrative: '',
+  notes: [],
+});
+assert.equal(
+  strip(repaired.reference),
+  'Creative Flair (2024) The Effects of Art and Culture on Todays Modern Society, Creative Flair website, accessed 5 September 2024. https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/'
+);
+assert(repaired.notes.some((note) => note.includes('HARVARD_APA_LEAD_REPAIRED')));
+assert(repaired.notes.some((note) => note.includes('HARVARD_ACCESS_DATE_REPAIRED')));
+assert(repaired.notes.some((note) => note.includes('HARVARD_WEBSITE_LABEL_REPAIRED')));
+
+const generated = generate('harvard', 'webpage', webData);
+assert(generated.notes.some((note) => note.startsWith('RMIT Harvard metascan confidence:')));
+assert(!generated.notes.some((note) => note.includes('no author/byline detected')));
+
+const sourceEvidence = metascanHarvard('newspaper-online', webData, {
+  reference: 'Creative Flair (2024) The Effects of Art and Culture on Todays Modern Society, Creative Flair website, accessed 5 September 2024. https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/',
+  intextParaphrase: '',
+  intextQuote: '',
+  intextNarrative: '',
+  notes: [],
+});
+assert(sourceEvidence.notes.some((note) => note.includes('HARVARD_SOURCE_EVIDENCE')));
+
+const quoteRepair = metascanHarvard('journal', {
+  ...base,
+  authors: [{ family: 'Danielle', given: 'J' }],
+  year: '2025',
+  title: 'Leveraging the power of human resource analytics for enhanced decision making: opportunities and challenges',
+  journal: 'International Journal of Research in Business and Social Science',
+  volume: '14',
+  issue: '6',
+  pages: '53–69',
+  doi: '10.20525/ijrbs.v14i6.4276',
+}, {
+  reference: "Danielle J (2025) 'Leveraging the power of human resource analytics for enhanced decision making: opportunities and challenges', International Journal of Research in Business and Social Science, 14(6):53–69, doi:10.20525/ijrbs.v14i6.4276.",
+  intextParaphrase: '',
+  intextQuote: '',
+  intextNarrative: '',
+  notes: [],
+});
+assert(strip(quoteRepair.reference).includes('‘Leveraging the power of human resource analytics for enhanced decision making: opportunities and challenges’'));
+assert(quoteRepair.notes.some((note) => note.includes('HARVARD_TITLE_QUOTES_REPAIRED')));
 
 console.log('PASS: Harvard metascan style-aware source detection');

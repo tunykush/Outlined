@@ -76,14 +76,6 @@ export function dayMonthYear(raw: string): string {
   return p.year;
 }
 
-export function monthDayYear(raw: string): string {
-  const p = parseDateParts(raw);
-  if (!p.year && !p.month && !p.day) return clean(raw);
-  if (p.month && p.day && p.year) return `${p.month} ${p.day}, ${p.year}`;
-  if (p.month && p.year) return `${p.month} ${p.year}`;
-  return p.year;
-}
-
 function normaliseDoi(raw: string): string {
   return clean(raw)
     .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')

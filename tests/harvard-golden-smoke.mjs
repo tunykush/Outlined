@@ -105,7 +105,7 @@ const fixtures = [
       pages: '2250–2268',
       doi: '10.1002/bse.3596',
     },
-    expected: "Abdullah A, Yamak S, Korzhenitskaya A, Rahimi R and McClellan J (2023) 'Sustainable development: The role of sustainability committees in achieving ESG targets', Business Strategy and the Environment, 33(3):2250–2268, doi:10.1002/bse.3596.",
+    expected: "Abdullah A, Yamak S, Korzhenitskaya A, Rahimi R and McClellan J (2023) ‘Sustainable development: The role of sustainability committees in achieving ESG targets’, Business Strategy and the Environment, 33(3):2250–2268, doi:10.1002/bse.3596.",
   },
   {
     name: 'Journal keeps full six-author reference list',
@@ -126,7 +126,7 @@ const fixtures = [
       volume: '14',
       doi: '10.3389/fpsyg.2023.1268091',
     },
-    expected: "Meng JJ, Wang XD, Xie MY, Hao ZL, Yang JL and Liu YB (2023) 'Ethical leadership and TMT decision-making of corporate social responsibility - a perspective of self-determination theory', Frontiers in Psychology, 14, doi:10.3389/fpsyg.2023.1268091.",
+    expected: "Meng JJ, Wang XD, Xie MY, Hao ZL, Yang JL and Liu YB (2023) ‘Ethical leadership and TMT decision-making of corporate social responsibility - a perspective of self-determination theory’, Frontiers in Psychology, 14, doi:10.3389/fpsyg.2023.1268091.",
   },
   {
     name: 'Journal with pages and DOI',
@@ -138,7 +138,7 @@ const fixtures = [
       journal: 'International Journal of Production Economics', volume: '140', issue: '1', pages: '149–159',
       doi: '10.1016/j.ijpe.2012.01.035',
     },
-    expected: "Gimenez C, Sierra V and Rodon J (2012) 'Sustainable operations: their impact on the triple bottom line', International Journal of Production Economics, 140(1):149–159, doi:10.1016/j.ijpe.2012.01.035.",
+    expected: "Gimenez C, Sierra V and Rodon J (2012) ‘Sustainable operations: their impact on the triple bottom line’, International Journal of Production Economics, 140(1):149–159, doi:10.1016/j.ijpe.2012.01.035.",
   },
   {
     name: 'Creative Flair webpage from uploaded Harvard reference list',
@@ -193,7 +193,39 @@ const fixtures = [
       volume: '10',
       pages: '245-292',
     },
-    expected: "Yus F (2002) 'Stand-up comedy and cultural spread: The case of sex roles', Babel Afial, 10:245-292.",
+    expected: "Yus F (2002) ‘Stand-up comedy and cultural spread: The case of sex roles’, Babel Afial, 10:245-292.",
+  },
+  {
+    name: 'Guardian article preserves nested curly single quotes from clean Harvard reference',
+    source: 'newspaper-online',
+    data: {
+      ...base,
+      authors: [{ family: 'Bogle', given: 'A' }],
+      year: '2024a',
+      month: 'October',
+      day: '22',
+      title: "'Stop all time wasting': Woolworths workers tracked and timed under new efficiency crackdown",
+      publisher: 'The Guardian',
+      accessDate: '14 April 2026',
+      url: 'https://www.theguardian.com/business/2024/oct/23/woolworths-staff-efficiency-productivity-crackdown-timed',
+    },
+    expected: "Bogle A (22 October 2024a) ‘‘Stop all time wasting’: Woolworths workers tracked and timed under new efficiency crackdown’, The Guardian, accessed 14 April 2026. https://www.theguardian.com/business/2024/oct/23/woolworths-staff-efficiency-productivity-crackdown-timed",
+  },
+  {
+    name: 'Journal article uses curly single title quotes from clean Harvard reference',
+    source: 'journal',
+    data: {
+      ...base,
+      authors: [{ family: 'Danielle', given: 'J' }],
+      year: '2025',
+      title: 'Leveraging the power of human resource analytics for enhanced decision making: opportunities and challenges',
+      journal: 'International Journal of Research in Business and Social Science',
+      volume: '14',
+      issue: '6',
+      pages: '53–69',
+      doi: '10.20525/ijrbs.v14i6.4276',
+    },
+    expected: "Danielle J (2025) ‘Leveraging the power of human resource analytics for enhanced decision making: opportunities and challenges’, International Journal of Research in Business and Social Science, 14(6):53–69, doi:10.20525/ijrbs.v14i6.4276.",
   },
 ];
 

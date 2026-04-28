@@ -13,7 +13,8 @@
     "start": "tsx src/server/index.ts",
     "typecheck": "tsc --noEmit",
     "test:harvard": "node tests/harvard-golden-smoke.mjs && tsx tests/harvard-metascan-smoke.ts",
-    "test:apa": "tsx tests/style-golden-smoke.ts",
+    "test:apa": "tsx tests/style-golden-smoke.ts && tsx tests/apa-metascan-smoke.ts",
+    "test:reference": "tsx tests/reference-lookup-smoke.ts",
     "test:styles": "tsx tests/style-golden-smoke.ts"
   },
   "engines": {

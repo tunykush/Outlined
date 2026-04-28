@@ -98,7 +98,6 @@
     toolName: { key: "toolName", label: "AI tool/model", placeholder: "ChatGPT / Val OpenAI GPT-4.1" }
   };
   var QUOTE_FIELDS = [F.quotePage, F.quotePages, F.quoteSection, F.quoteParagraph];
-  var URL_FIELD = [F.url];
   var FORM_SCHEMAS = {
     webpage: [F.year, F.month, F.day, F.title, F.siteName, F.accessDate, F.url, ...QUOTE_FIELDS],
     "wiki-entry": [F.year, F.month, F.day, F.title, F.siteName, F.accessDate, F.url, ...QUOTE_FIELDS],
@@ -470,6 +469,9 @@
       }
     }
   }
+  function isReferenceIdentifierInput(value) {
+    return /^(?:doi:\s*)?10\.\d{4,9}\/\S+$/i.test(value) || /^(?:pmid:\s*)?\d{6,9}$/i.test(value);
+  }
   async function handleFetch() {
     const input = $("urlInput");
     const url = input.value.trim();
@@ -477,14 +479,16 @@
       setStatus("H\xE3y paste m\u1ED9t URL.", "warn");
       return;
     }
-    if (!/^https?:\/\//i.test(url)) {
-      setStatus("URL ph\u1EA3i b\u1EAFt \u0111\u1EA7u b\u1EB1ng http:// ho\u1EB7c https://", "warn");
+    const isUrl = /^https?:\/\//i.test(url);
+    const isIdentifier = isReferenceIdentifierInput(url);
+    if (!isUrl && !isIdentifier) {
+      setStatus("URL ph\u1EA3i b\u1EAFt \u0111\u1EA7u b\u1EB1ng http:// ho\u1EB7c https://, ho\u1EB7c nh\u1EADp DOI/PubMed ID h\u1EE3p l\u1EC7.", "warn");
       return;
     }
     const btn = $("fetchBtn");
     btn.disabled = true;
     btn.classList.add("is-loading");
-    setStatus('<span class="spinner"></span> \u0110ang \u0111\u1ECDc trang web\u2026', "info");
+    setStatus(`<span class="spinner"></span> ${isIdentifier ? "\u0110ang \u0111\u1ECDc metadata h\u1ECDc thu\u1EADt\u2026" : "\u0110ang \u0111\u1ECDc trang web\u2026"}`, "info");
     try {
       const result = await extractMetadata(url, state.style);
       if (!result.data) {
@@ -527,6 +531,7 @@
         INVALID_PROTOCOL: "Ch\u1EC9 ch\u1EA5p nh\u1EADn http/https",
         BLOCKED_HOST: "URL n\u1ED9i b\u1ED9 b\u1ECB ch\u1EB7n",
         DNS_FAIL: "Kh\xF4ng t\xECm th\u1EA5y domain",
+        IDENTIFIER_LOOKUP_FAIL: "Kh\xF4ng t\xECm \u0111\u01B0\u1EE3c metadata cho DOI/PubMed",
         TIMEOUT: "Qu\xE1 th\u1EDDi gian ph\u1EA3n h\u1ED3i",
         TOO_LARGE: "Trang qu\xE1 l\u1EDBn",
         NOT_HTML: "Kh\xF4ng ph\u1EA3i trang HTML",

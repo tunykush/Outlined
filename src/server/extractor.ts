@@ -168,10 +168,51 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function titleFromUrlPath(baseUrl: string): string {
+  try {
+    const u = new URL(baseUrl);
+    const segments = u.pathname.split('/').map((part) => part.trim()).filter(Boolean);
+    let slug = [...segments].reverse().find((part) => !/^(index|default)\.[a-z0-9]+$/i.test(part) && !/^\d+$/.test(part)) || '';
+    if (!slug) return '';
+    slug = decodeURIComponent(slug)
+      .replace(/\.(?:html?|php|aspx?|pdf|docx?)$/i, '')
+      .replace(/^(?:article|post|chapter|page|entry|node|read|view|blog|news)[-_]+/i, '')
+      .replace(/[-_](?:19|20)\d{2}\d{4,}.*$/i, '')
+      .replace(/[-_]\d{5,}(?:[-_]\d+)*$/i, '')
+      .replace(/[-_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!slug || slug.length < 3) return '';
+    return slug.charAt(0).toUpperCase() + slug.slice(1);
+  } catch {
+    return '';
+  }
+}
+
+function isWeakMachineTitle(title: string, baseUrl: string): boolean {
+  const t = title.trim();
+  if (!t) return false;
+  try {
+    const u = new URL(baseUrl);
+    const host = u.hostname.replace(/^www\./, '');
+    if (t === baseUrl || t === u.href || t === host || t === u.hostname) return true;
+  } catch {
+    /* ignore */
+  }
+  if (/^https?:\/\//i.test(t)) return true;
+  if (/^10\.\d{4,9}\//i.test(t)) return true;
+  if (/^[A-Z]?\d{6,}[A-Z0-9.]*$/i.test(t)) return true;
+  if (t.includes('/') && /^[a-z0-9./_-]+$/i.test(t)) return true;
+  return false;
+}
+
 function cleanTitle(rawTitle: string, siteName: string, baseUrl: string): string {
   let title = rawTitle.replace(/\s+/g, ' ').trim();
   if (!title) return '';
   const host = hostnameOf(baseUrl);
+  const pathTitle = titleFromUrlPath(baseUrl);
+
+  if (isWeakMachineTitle(title, baseUrl) && pathTitle) return pathTitle;
 
   // Fandom/Wiki pages often expose titles like "Pretender | TYPE-MOON Wiki | Fandom".
   // APA needs the entry/page title only, not the container/site suffix.
@@ -186,7 +227,7 @@ function cleanTitle(rawTitle: string, siteName: string, baseUrl: string): string
   title = title.replace(/\s*[|–—-]\s*Fandom\s*$/i, '').trim();
   // Second pass: strip any remaining " | suffix" left after site-name regex didn't match
   if (title.includes('|')) title = title.split('|')[0].trim();
-  return title;
+  return title || pathTitle;
 }
 
 function cleanCanonicalUrl(rawUrl: string, baseUrl: string): string {
@@ -195,7 +236,7 @@ function cleanCanonicalUrl(rawUrl: string, baseUrl: string): string {
   try {
     const parsed = new URL(u);
     for (const key of Array.from(parsed.searchParams.keys())) {
-      if (/^(utm_|fbclid$|gclid$|srsltid$|mc_cid$|mc_eid$)/i.test(key)) {
+      if (/^(utm_|fbclid$|gclid$|msclkid$|srsltid$|mc_cid$|mc_eid$|igshid$|yclid$|_ga$|mkt_tok$|ref$|source$|via$)/i.test(key)) {
         parsed.searchParams.delete(key);
       }
     }
@@ -610,7 +651,16 @@ function guessType(
   if (/instagram\.com/.test(host)) return 'social-instagram';
   if (/tiktok\.com/.test(host)) return 'social-tiktok';
   if (/medium\.com|substack\.com|wordpress\.com|blogspot\./.test(host)) return 'blog-post';
-  if (/(news|times|guardian|herald|post|tribune|nytimes|bbc|cnn|reuters|smh|theage)/i.test(host)) {
+  if (/\.gov(?:\.|$)|\.edu(?:\.|$)|who\.int|worldbank\.org|imf\.org|oecd\.org|un\.org|unicef|abs\.gov|rmit\.edu|monash|unimelb/i.test(host)) {
+    return 'report';
+  }
+  if (/\/(?:report|publication|annual-report|research|working-paper|policy|white-paper|data)(?:\/|-|_|\?|$)/i.test(baseUrl)) {
+    return 'report';
+  }
+  if (/doi\.org|pubmed|jstor\.org|sciencedirect|springer\.com|wiley\.com|nature\.com|tandfonline|sagepub|mdpi\.com|frontiersin\.org|plos\.org|cambridge\.org|oup\.com|academic\.oup\.com/i.test(host)) {
+    return 'journal';
+  }
+  if (/(news|times|guardian|herald|post|tribune|nytimes|bbc|cnn|reuters|smh|theage|afr\.com|bloomberg|abc\.net\.au|vnexpress|tuoitre|thanhnien|dantri|nhandan|laodong|cafebiz|cafef|zing\.vn|kenh14|techcrunch|wired\.com|theverge|vice\.com|slate\.com)/i.test(host)) {
     return isHarvard ? 'webpage' : 'newspaper-online';
   }
 
