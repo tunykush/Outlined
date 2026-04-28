@@ -5,7 +5,7 @@
  */
 import { generateApa7, apa7Internals } from './styles/apa7.js';
 import { generateHarvard, harvardInternals } from './styles/harvard.js';
-import { generateIeee, ieeeInternals } from './styles/ieee.js';
+import { generateIeee } from './styles/ieee.js';
 import { validateAndRepairHarvard } from './harvard-validation.js';
 import { validateAndRepairApa7 } from './apa-validation.js';
 import { normalizeCitationData } from './normalize.js';
@@ -17,25 +17,17 @@ function has(s) {
 }
 function styleNotes(style, source, data) {
     const notes = [];
-    const validPeople = style === 'harvard'
-        ? harvardInternals.validPeople
-        : style === 'ieee'
-            ? ieeeInternals.validPeople
-            : apa7Internals.validPeople;
+    const validPeople = style === 'harvard' ? harvardInternals.validPeople : apa7Internals.validPeople;
     const hasAuthor = validPeople(data.authors).length > 0;
     if (!hasAuthor && source !== 'legal-act' && source !== 'legal-case' && source !== 'personal-communication') {
         notes.push(style === 'harvard'
             ? 'No author detected — RMIT Harvard starts the reference with the title or source name, depending on source type.'
-            : style === 'ieee'
-                ? 'No author detected — IEEE starts the reference with the title for untitled/no-author sources.'
-                : 'No author detected — APA 7 uses the title in the author position and the title in the in-text citation.');
+            : 'No author detected — APA 7 uses the title in the author position and the title in the in-text citation.');
     }
     if (!has(data.year) && source !== 'personal-communication') {
         notes.push(style === 'harvard'
             ? 'No publication year — RMIT Harvard uses n.d. for no date.'
-            : style === 'ieee'
-                ? 'No publication year — include the year where available; IEEE does not use "n.d.".'
-                : 'No publication year — APA 7 uses n.d. for no date.');
+            : 'No publication year — APA 7 uses n.d. for no date.');
     }
     if (style === 'harvard') {
         notes.push('RMIT Harvard in-text citations use author/date without a comma, e.g. (Author 2024).');
@@ -45,16 +37,28 @@ function styleNotes(style, source, data) {
         notes.push('Apply hanging indent and double spacing to the final reference list in Word/Google Docs.');
         notes.push('Arrange reference-list entries alphabetically by author family name or by title when no author exists.');
     }
-    else if (style === 'ieee') {
-        notes.push('IEEE uses numbered references [1], [2], [3] … in order of first appearance. Replace [1] with the correct sequential number in your document.');
-        notes.push('Arrange the reference list in the order citations appear in your text, not alphabetically.');
-        notes.push('Author format: Initials before family name — e.g. "A. B. Smith". Use abbreviated month names: Jan., Feb., Mar., Apr., May, Jun., July, Aug., Sept., Oct., Nov., Dec.');
-    }
     if (source === 'book-chapter' && !has(data.editorsText) && validPeople(data.editors).length === 0) {
-        notes.push('Book chapters in edited books require editor name(s) after “In”. Add editors if available.');
+        notes.push('Book chapters in edited books require editor name(s) after "In". Add editors if available.');
     }
     if (source === 'personal-communication') {
         notes.push('Personal communication is not included in the reference list; cite it in-text only.');
+    }
+    return notes;
+}
+function ieeeNotes(source, data) {
+    const notes = [
+        'IEEE uses numbered references [1], [2], [3] … in order of first appearance. Replace [1] with the correct sequential number in your document.',
+        'Arrange the reference list in the order citations appear in your text, not alphabetically.',
+        'Author format: Initials before family name — e.g. "A. B. Smith". Abbreviated months: Jan., Feb., Mar., Apr., May, Jun., July, Aug., Sept., Oct., Nov., Dec.',
+    ];
+    if (source === 'personal-communication') {
+        notes.push('Personal communication is not included in the reference list; cite it in-text only.');
+    }
+    if (source === 'book-chapter') {
+        const has = (s) => String(s || '').trim().length > 0;
+        if (!has(data.editorsText) && (!data.editors || data.editors.length === 0)) {
+            notes.push('Book chapters in edited books require editor name(s). Add editors if available.');
+        }
     }
     return notes;
 }
@@ -63,23 +67,20 @@ export function generate(style, source, data) {
     let output;
     if (style === 'apa7') {
         output = validateAndRepairApa7(source, normalizedData, generateApa7(source, normalizedData));
+        return { ...output, notes: [...styleNotes(style, source, normalizedData), ...(output.notes || [])] };
     }
-    else if (style === 'harvard') {
+    if (style === 'harvard') {
         output = validateAndRepairHarvard(source, normalizedData, generateHarvard(source, normalizedData));
+        return { ...output, notes: [...styleNotes(style, source, normalizedData), ...(output.notes || [])] };
     }
-    else if (style === 'ieee') {
+    if (style === 'ieee') {
         output = generateIeee(source, normalizedData);
+        return { ...output, notes: [...ieeeNotes(source, normalizedData), ...(output.notes || [])] };
     }
-    else {
-        const fallback = generateApa7(source, normalizedData);
-        output = {
-            ...fallback,
-            reference: `(Style "${style}" is not implemented yet) ${fallback.reference.replace(/<\/?i>/g, '')}`,
-            notes: [`${style} is not implemented. Use APA 7th or RMIT Harvard for validated output.`],
-        };
-    }
+    const fallback = generateApa7(source, normalizedData);
     return {
-        ...output,
-        notes: [...styleNotes(style, source, normalizedData), ...(output.notes || [])],
+        ...fallback,
+        reference: `(Style "${style}" is not implemented yet) ${fallback.reference.replace(/<\/?i>/g, '')}`,
+        notes: [`${style} is not implemented. Use APA 7th or RMIT Harvard for validated output.`],
     };
 }
