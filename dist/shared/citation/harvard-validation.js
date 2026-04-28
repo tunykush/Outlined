@@ -30,12 +30,6 @@ const REQUIRED = {
     'ai-chat': ['toolName', 'accessDate'],
 };
 function noFinalPeriodAfterUrl(s) { return s.trim().replace(/(https?:\/\/\S+)\.$/i, '$1'); }
-function removeWebTitleItalics(source, reference) {
-    if (source !== 'webpage' && source !== 'wiki-entry')
-        return reference;
-    // RMIT Harvard website examples show page titles as plain text, not italicised.
-    return reference.replace(/<i>(.*?)<\/i>/g, '$1');
-}
 function normaliseSpacing(reference) {
     return reference
         .replace(/\s+([,.:;])/g, '$1')
@@ -100,7 +94,6 @@ function confidence(source, data) {
 }
 export function validateAndRepairHarvard(source, data, output) {
     let reference = output.reference;
-    reference = removeWebTitleItalics(source, reference);
     reference = repairHarvardDoi(reference);
     reference = normaliseSpacing(reference);
     reference = noFinalPeriodAfterUrl(reference);

@@ -18,7 +18,6 @@ const stripHtml = (s) => s.replace(/<[^>]+>/g, '');
 const clean = (s = '') => String(s).replace(/\s+/g, ' ').trim();
 const has = (s) => clean(s || '').length > 0;
 const dot = (s) => /[.!?]$/.test(stripHtml(s).trim()) ? s : `${s}.`;
-const commaJoin = (parts) => parts.filter(Boolean).join(', ');
 const noFinalPeriodAfterUrl = (s) => s.replace(/\s+\./g, '.').trim();
 function sentenceCase(s) {
     // Conservative: keep user capitalization except trim. Citation generators should not destroy proper nouns/acronyms.
@@ -143,19 +142,6 @@ function apaDate(d, includeMonthDay) {
         return `(${year}, ${month}).`;
     return `(${year}).`;
 }
-function apaRetrievalDate(accessDate) {
-    const s = clean(accessDate);
-    if (!s)
-        return '';
-    const months = 'January|February|March|April|May|June|July|August|September|October|November|December';
-    let m = s.match(new RegExp(`^(\\d{1,2})\\s+(${months})\\s+(\\d{4})$`, 'i'));
-    if (m)
-        return `${m[2][0].toUpperCase()}${m[2].slice(1)} ${Number(m[1])}, ${m[3]}`;
-    m = s.match(new RegExp(`^(${months})\\s+(\\d{1,2}),?\\s+(\\d{4})$`, 'i'));
-    if (m)
-        return `${m[1][0].toUpperCase()}${m[1].slice(1)} ${Number(m[2])}, ${m[3]}`;
-    return s;
-}
 function doiUrl(rawDoi) {
     if (!has(rawDoi))
         return '';
@@ -167,9 +153,20 @@ function doiUrl(rawDoi) {
 function authorOrTitleLead(d, date, titleForNoAuthor) {
     const auth = authorsAPA(d.authors);
     if (auth)
-        return { lead: `${dot(esc(auth))} ${date} `, omitTitle: false };
+        return { lead: `${dot(esc(auth))} ${date} `, omitTitle: false, orgUsedAsAuthor: false };
+    const orgName = clean(d.siteName || d.publisher || '');
+    if (orgName)
+        return { lead: `${dot(esc(orgName))} ${date} `, omitTitle: false, orgUsedAsAuthor: true };
     const fallbackTitle = titleForNoAuthor || esc(clean(d.title) || 'Untitled source');
-    return { lead: `${dot(fallbackTitle)} ${date} `, omitTitle: true };
+    return { lead: `${dot(fallbackTitle)} ${date} `, omitTitle: true, orgUsedAsAuthor: false };
+}
+// Resolves the "effective author" for in-text citations, matching authorOrTitleLead priority:
+// personal authors → org/site name → empty (falls through to title-based in-text).
+function resolveInTextAuthor(d, narrative = false) {
+    const fromAuthors = authorsInText(d.authors, narrative);
+    if (fromAuthors)
+        return fromAuthors;
+    return clean(d.siteName || d.publisher || '');
 }
 function sameText(a, b) {
     return clean(stripHtml(a)).replace(/\.$/, '').toLowerCase() === clean(stripHtml(b)).replace(/\.$/, '').toLowerCase();
@@ -243,13 +240,14 @@ function quoteLocator(d, source) {
 /* ============================================================
  * APA 7th REFERENCE GENERATORS
  * ============================================================ */
-function apaWebpage(d) {
-    const date = apaDate(d, Boolean(clean(d.month) || clean(d.day)));
+function apaWebpageLike(d, includeMonthDay) {
+    const date = apaDate(d, includeMonthDay);
     const title = ital(esc(sentenceCase(d.title)));
-    const { lead, omitTitle } = authorOrTitleLead(d, date, title);
+    const { lead, omitTitle, orgUsedAsAuthor } = authorOrTitleLead(d, date, title);
     const auth = authorsAPA(d.authors);
     const site = clean(d.siteName);
-    const showSite = site && (!auth || !sameText(auth, site));
+    // Suppress site name when it was already used as the org-author lead (avoids duplication).
+    const showSite = site && !orgUsedAsAuthor && (!auth || !sameText(auth, site));
     let out = lead;
     if (!omitTitle)
         out += `${title}. `;
@@ -259,33 +257,20 @@ function apaWebpage(d) {
         out += clean(d.url);
     return noFinalPeriodAfterUrl(out);
 }
-function apaWebpageDocument(d) {
-    const date = apaDate(d, false);
-    const title = ital(esc(sentenceCase(d.title)));
-    const { lead, omitTitle } = authorOrTitleLead(d, date, title);
-    const auth = authorsAPA(d.authors);
-    const site = clean(d.siteName);
-    const showSite = site && (!auth || !sameText(auth, site));
-    let out = lead;
-    if (!omitTitle)
-        out += `${title}. `;
-    if (showSite)
-        out += `${esc(site)}. `;
-    if (has(d.url))
-        out += clean(d.url);
-    return noFinalPeriodAfterUrl(out);
-}
+const apaWebpage = (d) => apaWebpageLike(d, Boolean(clean(d.month) || clean(d.day)));
+const apaWebpageDocument = (d) => apaWebpageLike(d, false);
 function apaWikiEntry(d) {
+    // RMIT APA 7th wiki/fandom format (user-specified):
+    //   No author:   Title. (Date). Title. *Wiki Name*. URL
+    //   With author: Author, A. (Date). Title. *Wiki Name*. URL
+    // Title plain text (not italic). No "In". No "Retrieved".
     const date = apaDate(d, Boolean(clean(d.month) || clean(d.day)));
     const entryTitle = esc(sentenceCase(d.title) || 'Untitled entry');
-    const workTitle = clean(d.siteName || d.publisher || 'Reference work');
-    const retrieval = apaRetrievalDate(d.accessDate);
-    // RMIT APA: encyclopedia/Wikipedia entries place the entry title in the author
-    // position when no author is identified and use "In" before the reference work.
-    let out = `${dot(entryTitle)} ${date} In ${ital(esc(workTitle))}. `;
-    if (retrieval && /wiki|dictionary|encyclopedia|fandom/i.test(workTitle + ' ' + d.url)) {
-        out += `Retrieved ${esc(retrieval)}, from `;
-    }
+    const workTitle = ital(esc(clean(d.siteName || d.publisher || 'Reference work')));
+    const auth = authorsAPA(d.authors);
+    let out = auth
+        ? `${dot(esc(auth))} ${date} ${entryTitle}. ${workTitle}. `
+        : `${dot(entryTitle)} ${date} ${entryTitle}. ${workTitle}. `;
     if (has(d.url))
         out += clean(d.url);
     return noFinalPeriodAfterUrl(out);
@@ -701,7 +686,7 @@ function apaInTextParenthetical(d, source) {
         const date = md && clean(d.year) ? `${md}, ${clean(d.year)}` : (md || clean(d.year) || 'exact date needed');
         return `(${esc(name)}, personal communication, ${esc(date)})`;
     }
-    const author = authorsInText(d.authors, false);
+    const author = resolveInTextAuthor(d, false);
     const year = clean(d.year) || 'n.d.';
     return author ? `(${esc(author)}, ${esc(year)})` : `(${noAuthorInTextTitle(d, source)}, ${esc(year)})`;
 }
@@ -709,7 +694,7 @@ function apaInTextNarrative(d, source) {
     if (source === 'personal-communication')
         return apaInTextParenthetical(d, source);
     const year = clean(d.year) || 'n.d.';
-    const author = authorsInText(d.authors, true);
+    const author = resolveInTextAuthor(d, true);
     if (author)
         return `${esc(author)} (${esc(year)})`;
     return `${noAuthorInTextTitle(d, source)} (${esc(year)})`;
@@ -724,7 +709,7 @@ function apaInTextQuote(d, source) {
         const locPart = locator ? `, ${locator}` : '';
         return `(${ital(esc(clean(d.title) || 'Case title'))}${clean(d.year) ? `, ${esc(clean(d.year))}` : ''}${locPart})`;
     }
-    const author = authorsInText(d.authors, false);
+    const author = resolveInTextAuthor(d, false);
     const year = clean(d.year) || 'n.d.';
     const locator = quoteLocator(d, source);
     const locPart = locator ? `, ${locator}` : '';

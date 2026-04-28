@@ -4,7 +4,7 @@
  */
 
 /** Citation styles currently implemented and validated against uploaded RMIT PDFs. */
-export type CitationStyle = 'apa7' | 'harvard';
+export type CitationStyle = 'apa7' | 'harvard' | 'ieee';
 
 /**
  * Source type categories covered by the RMIT Easy Cite APA 7th PDF.
