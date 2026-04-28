@@ -254,8 +254,9 @@ export function normalizeCitationData(style: CitationStyle, source: SourceType, 
   }
 
   const host = hostname(d.url);
-  if (isGenericSiteName(d.siteName) && host) d.siteName = titleFromDomain(host);
-  if (isGenericSiteName(d.publisher) && host) d.publisher = titleFromDomain(host);
+  const keepIeeeContainerNames = style === 'ieee';
+  if ((!keepIeeeContainerNames || !has(d.siteName)) && isGenericSiteName(d.siteName) && host) d.siteName = titleFromDomain(host);
+  if ((!keepIeeeContainerNames || !has(d.publisher)) && isGenericSiteName(d.publisher) && host) d.publisher = titleFromDomain(host);
   if (!d.siteName && host) d.siteName = titleFromDomain(host);
   // Strip compound site names like "Advisors - Haig Partners" → "Haig Partners"
   // This catches og:site_name values that contain category prefixes before the brand.

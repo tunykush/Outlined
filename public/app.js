@@ -165,7 +165,8 @@
   };
   var STYLE_LABELS = {
     apa7: "APA 7th",
-    harvard: "RMIT Harvard"
+    harvard: "RMIT Harvard",
+    ieee: "IEEE"
   };
 
   // src/client/main.ts

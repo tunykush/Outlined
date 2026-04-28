@@ -3,7 +3,7 @@
  * Mirrors the RMIT Easy Cite APA 7th sections as closely as possible.
  */
 
-import type { CitationData, SourceType } from '../shared/types.js';
+import type { CitationData, CitationStyle, SourceType } from '../shared/types.js';
 
 export type FieldKey = keyof CitationData;
 
@@ -139,7 +139,8 @@ export const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
   'ai-chat': 'AI-generated chat',
 };
 
-export const STYLE_LABELS: Record<string, string> = {
+export const STYLE_LABELS: Record<CitationStyle, string> = {
   apa7: 'APA 7th',
   harvard: 'RMIT Harvard',
+  ieee: 'IEEE',
 };
