@@ -36,7 +36,7 @@
   <div class="hero-inner">
     <p class="overline">URL → Reference</p>
     <h1 class="hero-headline">
-      A library of citation rules. <em>One paste away.</em>
+      A library of citation rules. <em><span class="tw-wrap"><span class="tw-ghost" aria-hidden="true">One paste away.</span><span class="tw-live"><span id="typewriter-display"></span><span class="tw-cursor" aria-hidden="true">|</span></span></span></em>
     </h1>
     <p class="hero-sub">
       Drop in any public URL. We'll read the page, infer the source type, and hand you back
@@ -182,5 +182,27 @@
 </footer>
 
 <script src="/app.js"></script>
+<script>
+(function () {
+  var el = document.getElementById('typewriter-display');
+  var text = 'One paste away.';
+  var pos = 0;
+  var deleting = false;
+  function step() {
+    if (!deleting) {
+      pos++;
+      el.textContent = text.slice(0, pos);
+      if (pos === text.length) { deleting = true; setTimeout(step, 1800); return; }
+      setTimeout(step, 80);
+    } else {
+      pos--;
+      el.textContent = text.slice(0, pos);
+      if (pos === 0) { deleting = false; setTimeout(step, 400); return; }
+      setTimeout(step, 40);
+    }
+  }
+  step();
+})();
+</script>
 </body>
 </html>

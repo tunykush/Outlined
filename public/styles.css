@@ -203,6 +203,38 @@ input, textarea, select { font-family: inherit; }
 
 .hero-headline em { font-style: italic; color: var(--terracotta); }
 
+.tw-wrap {
+  position: relative;
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.tw-ghost {
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.tw-live {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+}
+
+.tw-cursor {
+  display: inline-block;
+  font-style: normal;
+  font-weight: 400;
+  color: var(--terracotta);
+  animation: tw-blink 0.75s step-end infinite;
+  margin-left: 1px;
+}
+
+@keyframes tw-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 .hero-sub {
   font-size: clamp(0.94rem, 2.5vw, 1.25rem);
   line-height: 1.60;
