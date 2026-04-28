@@ -151,6 +151,13 @@ function isGenericSiteName(s: string): boolean {
   return !v || v === 'www' || v === 'website' || /^www\./.test(v) || /\.[a-z]{2,}(\.[a-z]{2,})?$/.test(v);
 }
 
+function isGenericHarvardSiteName(s: string, host: string): boolean {
+  const v = clean(s).toLowerCase();
+  if (!v || v === 'www' || v === 'website' || /^www\./.test(v)) return true;
+  if (/\.[a-z]{2,}(\.[a-z]{2,})?$/.test(v)) return Boolean(SPECIAL_SITES[host]);
+  return false;
+}
+
 /**
  * Strip compound site names like "Dealership Buy-Sell Advisors - Haig Partners"
  * down to the real brand. Strategy: split on " - " and find the segment whose
@@ -258,8 +265,10 @@ export function normalizeCitationData(style: CitationStyle, source: SourceType, 
 
   const host = hostname(d.url);
   const keepIeeeContainerNames = style === 'ieee';
-  if ((!keepIeeeContainerNames || !has(d.siteName) || Boolean(SPECIAL_SITES[host])) && isGenericSiteName(d.siteName) && host) d.siteName = titleFromDomain(host);
-  if ((!keepIeeeContainerNames || !has(d.publisher) || Boolean(SPECIAL_SITES[host])) && isGenericSiteName(d.publisher) && host) d.publisher = titleFromDomain(host);
+  const genericSiteName = style === 'harvard' ? isGenericHarvardSiteName(d.siteName, host) : isGenericSiteName(d.siteName);
+  const genericPublisher = style === 'harvard' ? isGenericHarvardSiteName(d.publisher, host) : isGenericSiteName(d.publisher);
+  if ((!keepIeeeContainerNames || !has(d.siteName) || Boolean(SPECIAL_SITES[host])) && genericSiteName && host) d.siteName = titleFromDomain(host);
+  if ((!keepIeeeContainerNames || !has(d.publisher) || Boolean(SPECIAL_SITES[host])) && genericPublisher && host) d.publisher = titleFromDomain(host);
   if (!d.siteName && host) d.siteName = titleFromDomain(host);
   // Strip compound site names like "Advisors - Haig Partners" → "Haig Partners"
   // This catches og:site_name values that contain category prefixes before the brand.

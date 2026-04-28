@@ -56,9 +56,7 @@ function authorsHarvard(authors: Author[] = []): string {
   if (!list.length) return '';
   if (list.length === 1) return list[0];
   if (list.length === 2) return `${list[0]} and ${list[1]}`;
-  if (list.length === 3) return `${list[0]}, ${list[1]} and ${list[2]}`;
-  // RMIT Harvard reference list: first 3 authors then et al. for 4+
-  return `${list[0]}, ${list[1]}, ${list[2]} et al.`;
+  return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
 }
 
 function referenceAuthorsHarvard(d: CitationData): string {
@@ -194,15 +192,9 @@ function edn(edition: string): string {
 function websiteName(d: CitationData): string {
   const raw = clean(d.siteName || d.publisher || d.platform);
   if (!raw) return '';
-  // If the value looks like a bare domain (e.g. "brandlife.io"), derive a readable name
+  // RMIT Harvard examples sometimes use the domain itself as the website name.
   if (/\.[a-z]{2,}(?:\.[a-z]{2,})?$/i.test(raw)) {
-    const first = raw.split('.')[0] || '';
-    const readable = first
-      .split(/[-_]/)
-      .filter(Boolean)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
-    return readable ? `${readable} website` : raw;
+    return /\bwebsite\b/i.test(raw) ? raw : `${raw} website`;
   }
   return /\bwebsite\b/i.test(raw) ? raw : `${raw} website`;
 }
@@ -320,11 +312,11 @@ function harvardWebpageLike(d: CitationData, titleAlwaysItalic = false): string 
   let lead: string;
   let titleInLead = false;
   if (hasPersonal) {
-    lead = `${esc(referenceAuthorsHarvard(d))} ${dateYear(d)} `;
+    lead = `${esc(referenceAuthorsHarvard(d))} ${dateFull(d)} `;
   } else if (orgName) {
-    lead = `${esc(orgName)} ${dateYear(d)} `;
+    lead = `${esc(orgName)} ${dateFull(d)} `;
   } else {
-    lead = `${titleHtml} ${dateYear(d)} `;
+    lead = `${titleHtml} ${dateFull(d)} `;
     titleInLead = true;
   }
 
