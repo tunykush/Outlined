@@ -720,6 +720,53 @@ input, textarea, select { font-family: inherit; }
   border-top: 1px solid var(--border-cream);
 }
 
+/* ====================== REFINE PANEL ====================== */
+.refine-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border-warm);
+  border-radius: var(--r-8);
+  color: var(--stone-gray);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.refine-toggle:hover {
+  color: var(--near-black);
+  background: var(--border-cream);
+  border-color: var(--ring-warm);
+}
+
+.refine-toggle svg {
+  transition: transform 0.25s ease;
+}
+
+.refine-toggle[aria-expanded="false"] svg {
+  transform: rotate(-180deg);
+}
+
+.refine-panel {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.28s ease;
+  overflow: hidden;
+}
+
+.refine-panel.is-collapsed {
+  grid-template-rows: 0fr;
+}
+
+.refine-panel__inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* ====================== OUTPUT ====================== */
 .output-label {
   font-size: 0.72rem;

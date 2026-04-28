@@ -61,6 +61,11 @@
     <header class="card-header">
       <span class="card-num">01</span>
       <h2 class="card-title">Paste &amp; refine</h2>
+      <button type="button" class="refine-toggle" id="refineToggle" aria-expanded="true" aria-controls="refinePanel" title="Toggle metadata fields">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
     </header>
 
     <div class="source-tabs" id="sourceTabs"></div>
@@ -85,10 +90,13 @@
 
     <div id="statusBox" class="status"></div>
 
-    <div class="form-grid" id="formGrid"></div>
-
-    <div class="card-actions">
-      <button type="button" class="btn btn--text" id="clearBtn">Clear all</button>
+    <div class="refine-panel" id="refinePanel">
+      <div class="refine-panel__inner">
+        <div class="form-grid" id="formGrid"></div>
+        <div class="card-actions">
+          <button type="button" class="btn btn--text" id="clearBtn">Clear all</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -202,6 +210,17 @@
     }
   }
   step();
+})();
+
+// Refine panel toggle
+(function () {
+  var btn = document.getElementById('refineToggle');
+  var panel = document.getElementById('refinePanel');
+  btn.addEventListener('click', function () {
+    var isExpanded = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!isExpanded));
+    panel.classList.toggle('is-collapsed', isExpanded);
+  });
 })();
 </script>
 </body>
