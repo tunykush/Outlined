@@ -47,10 +47,7 @@ function authorsHarvard(authors = []) {
         return list[0];
     if (list.length === 2)
         return `${list[0]} and ${list[1]}`;
-    if (list.length === 3)
-        return `${list[0]}, ${list[1]} and ${list[2]}`;
-    // RMIT Harvard reference list: first 3 authors then et al. for 4+
-    return `${list[0]}, ${list[1]}, ${list[2]} et al.`;
+    return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
 }
 function referenceAuthorsHarvard(d) {
     const override = clean(d.referenceAuthorText || '');
@@ -152,6 +149,11 @@ function dateYear(d) {
 function dateFull(d) {
     return `(${sourceDateText(d)})`;
 }
+function webPublicationDate(d) {
+    // User-provided RMIT Harvard examples for web pages keep full date when the page exposes one,
+    // but fall back to year/n.d. for issue ranges like "July-August 2020" or missing dates.
+    return has(d.day) && has(d.month) ? dateFull(d) : dateYear(d);
+}
 function accessPart(d) {
     return has(d.accessDate) ? `accessed ${esc(accessDateText(d))}` : 'accessed date needed';
 }
@@ -184,16 +186,8 @@ function websiteName(d) {
     const raw = clean(d.siteName || d.publisher || d.platform);
     if (!raw)
         return '';
-    // If the value looks like a bare domain (e.g. "brandlife.io"), derive a readable name
-    if (/\.[a-z]{2,}(?:\.[a-z]{2,})?$/i.test(raw)) {
-        const first = raw.split('.')[0] || '';
-        const readable = first
-            .split(/[-_]/)
-            .filter(Boolean)
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-            .join(' ');
-        return readable ? `${readable} website` : raw;
-    }
+    if (/\.[a-z]{2,}(?:\.[a-z]{2,})?$/i.test(raw))
+        return raw;
     return /\bwebsite\b/i.test(raw) ? raw : `${raw} website`;
 }
 function refLead(d, titleHtmlForNoAuthor, date = dateYear(d)) {
@@ -301,24 +295,9 @@ function harvardPersonalCommunicationNarrative(d) {
 /* -------------------- reference-list generators -------------------- */
 function harvardWebpageLike(d, titleAlwaysItalic = false) {
     const rawTitle = esc(clean(d.title) || 'Untitled webpage');
-    const titleHtml = titleAlwaysItalic ? ital(rawTitle) : rawTitle;
-    // RMIT Harvard: no personal author → use org/site name as organisation author.
-    // Title-first is only the absolute last resort when no org name exists either.
-    const hasPersonal = validPeople(d.authors).length > 0;
-    const orgName = !hasPersonal ? clean(d.siteName || d.publisher || '') : '';
-    let lead;
-    let titleInLead = false;
-    if (hasPersonal) {
-        lead = `${esc(referenceAuthorsHarvard(d))} ${dateYear(d)} `;
-    }
-    else if (orgName) {
-        lead = `${esc(orgName)} ${dateYear(d)} `;
-    }
-    else {
-        lead = `${titleHtml} ${dateYear(d)} `;
-        titleInLead = true;
-    }
-    const parts = [titleInLead ? lead.trim() : `${lead.trim()} ${titleHtml}`];
+    const titleForNoAuthor = titleAlwaysItalic ? ital(rawTitle) : rawTitle;
+    const { lead, omittedTitle } = refLead(d, titleForNoAuthor, webPublicationDate(d));
+    const parts = [omittedTitle ? lead.trim() : `${lead.trim()} ${titleAlwaysItalic ? ital(rawTitle) : rawTitle}`];
     const site = websiteName(d);
     if (site)
         parts.push(esc(site));
@@ -326,13 +305,13 @@ function harvardWebpageLike(d, titleAlwaysItalic = false) {
     return appendUrl(joinNonEmpty(parts), d.url);
 }
 function harvardWebpage(d) {
-    return harvardWebpageLike(d, true);
+    return harvardWebpageLike(d, false);
 }
 function harvardWebpageDocument(d) {
     return harvardWebpageLike(d, true);
 }
 function harvardWikiEntry(d) {
-    return harvardWebpageLike(d, true);
+    return harvardWebpageLike(d, false);
 }
 function harvardNewsOnline(d) {
     const title = `'${esc(clean(d.title) || 'Untitled article')}'`;
@@ -511,6 +490,10 @@ function harvardFilm(d) {
     if (has(d.place))
         parts.push(esc(clean(d.place)));
     return endFullStop(joinNonEmpty(parts));
+}
+function roleName(raw, fallback) {
+    const r = clean(raw || fallback).toLowerCase();
+    return r.endsWith('s') ? r : r;
 }
 function harvardPodcast(d) {
     const hosts = authorsHarvard(d.authors) || clean(d.publisher || d.siteName || 'Host');

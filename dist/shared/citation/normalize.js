@@ -141,32 +141,7 @@ function titleFromDomain(host) {
 }
 function isGenericSiteName(s) {
     const v = clean(s).toLowerCase();
-    // Treat bare domain strings (e.g. "brandlife.io") as generic so they get replaced
-    // with a readable title from titleFromDomain rather than rendering as raw domain text.
-    return !v || v === 'www' || v === 'website' || /^www\./.test(v) || /\.[a-z]{2,}(\.[a-z]{2,})?$/.test(v);
-}
-/**
- * Strip compound site names like "Dealership Buy-Sell Advisors - Haig Partners"
- * down to the real brand. Strategy: split on " - " and find the segment whose
- * slug matches the page hostname (e.g. "haigpartners" ↔ "Haig Partners"). If no
- * hostname match, take the last segment which is usually the brand.
- */
-function cleanCompoundSiteName(siteName, url) {
-    if (!siteName.includes(' - '))
-        return siteName;
-    const segments = siteName.split(/\s+-\s+/).map((s) => s.trim()).filter(Boolean);
-    if (segments.length < 2)
-        return siteName;
-    try {
-        const host = new URL(url).hostname.replace(/^www\./, '').split('.')[0].toLowerCase();
-        const slug = (s) => s.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-        const matched = segments.find((s) => slug(s) === host || host.startsWith(slug(s)) || slug(s).startsWith(host));
-        if (matched)
-            return matched;
-    }
-    catch { /* ignore malformed URL */ }
-    // Fallback: last segment (descriptor - Brand pattern)
-    return segments[segments.length - 1];
+    return !v || v === 'www' || v === 'website' || /^www\./.test(v);
 }
 function splitName(raw) {
     const s = clean(raw);
@@ -264,12 +239,6 @@ export function normalizeCitationData(style, source, input) {
         d.publisher = titleFromDomain(host);
     if (!d.siteName && host)
         d.siteName = titleFromDomain(host);
-    // Strip compound site names like "Advisors - Haig Partners" → "Haig Partners"
-    // This catches og:site_name values that contain category prefixes before the brand.
-    if (d.siteName)
-        d.siteName = cleanCompoundSiteName(d.siteName, d.url);
-    if (d.publisher)
-        d.publisher = cleanCompoundSiteName(d.publisher, d.url);
     // DOI beats URL for journal articles in both uploaded style guides.
     if (source === 'journal' && d.doi)
         d.url = d.url && /^https?:\/\/(?:dx\.)?doi\.org\//i.test(d.url) ? '' : d.url;

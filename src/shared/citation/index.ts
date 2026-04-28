@@ -7,7 +7,6 @@
 import type { CitationData, CitationOutput, CitationStyle, SourceType } from '../types.js';
 import { generateApa7, apa7Internals } from './styles/apa7.js';
 import { generateHarvard, harvardInternals } from './styles/harvard.js';
-import { generateIeee } from './styles/ieee.js';
 import { validateAndRepairHarvard } from './harvard-validation.js';
 import { validateAndRepairApa7 } from './apa-validation.js';
 import { normalizeCitationData } from './normalize.js';
@@ -46,30 +45,12 @@ function styleNotes(style: CitationStyle, source: SourceType, data: CitationData
   }
 
   if (source === 'book-chapter' && !has(data.editorsText) && validPeople(data.editors).length === 0) {
-    notes.push('Book chapters in edited books require editor name(s) after "In". Add editors if available.');
+    notes.push('Book chapters in edited books require editor name(s) after “In”. Add editors if available.');
   }
   if (source === 'personal-communication') {
     notes.push('Personal communication is not included in the reference list; cite it in-text only.');
   }
 
-  return notes;
-}
-
-function ieeeNotes(source: SourceType, data: CitationData): string[] {
-  const notes: string[] = [
-    'IEEE uses numbered references [1], [2], [3] … in order of first appearance. Replace [1] with the correct sequential number in your document.',
-    'Arrange the reference list in the order citations appear in your text, not alphabetically.',
-    'Author format: Initials before family name — e.g. "A. B. Smith". Abbreviated months: Jan., Feb., Mar., Apr., May, Jun., July, Aug., Sept., Oct., Nov., Dec.',
-  ];
-  if (source === 'personal-communication') {
-    notes.push('Personal communication is not included in the reference list; cite it in-text only.');
-  }
-  if (source === 'book-chapter') {
-    const has = (s: string | undefined | null) => String(s || '').trim().length > 0;
-    if (!has(data.editorsText) && (!data.editors || data.editors.length === 0)) {
-      notes.push('Book chapters in edited books require editor name(s). Add editors if available.');
-    }
-  }
   return notes;
 }
 
@@ -83,23 +64,19 @@ export function generate(
 
   if (style === 'apa7') {
     output = validateAndRepairApa7(source, normalizedData, generateApa7(source, normalizedData));
-    return { ...output, notes: [...styleNotes(style, source, normalizedData), ...(output.notes || [])] };
-  }
-
-  if (style === 'harvard') {
+  } else if (style === 'harvard') {
     output = validateAndRepairHarvard(source, normalizedData, generateHarvard(source, normalizedData));
-    return { ...output, notes: [...styleNotes(style, source, normalizedData), ...(output.notes || [])] };
+  } else {
+    const fallback = generateApa7(source, normalizedData);
+    output = {
+      ...fallback,
+      reference: `(Style "${style}" is not implemented yet) ${fallback.reference.replace(/<\/?i>/g, '')}`,
+      notes: [`${style} is not implemented. Use APA 7th or RMIT Harvard for validated output.`],
+    };
   }
 
-  if (style === 'ieee') {
-    output = generateIeee(source, normalizedData);
-    return { ...output, notes: [...ieeeNotes(source, normalizedData), ...(output.notes || [])] };
-  }
-
-  const fallback = generateApa7(source, normalizedData);
   return {
-    ...fallback,
-    reference: `(Style "${style}" is not implemented yet) ${fallback.reference.replace(/<\/?i>/g, '')}`,
-    notes: [`${style} is not implemented. Use APA 7th or RMIT Harvard for validated output.`],
+    ...output,
+    notes: [...styleNotes(style, source, normalizedData), ...(output.notes || [])],
   };
 }

@@ -32,7 +32,7 @@ app.post('/api/extract', async (req, res) => {
     try {
         const parsed = await validateUrlSafety(url.trim());
         const { html, finalUrl } = await fetchHtml(parsed.toString());
-        const { data, guessedType } = await extractMetadata(html, finalUrl || parsed.toString());
+        const { data, guessedType } = extractMetadata(html, finalUrl || parsed.toString());
         return res.json({ ok: true, data, guessedType });
     }
     catch (err) {
