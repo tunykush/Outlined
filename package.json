@@ -4,10 +4,10 @@
   "description": "TypeScript citation generator following uploaded RMIT APA 7th and RMIT Harvard guides",
   "type": "module",
   "scripts": {
-    "build:client": "esbuild src/client/main.ts --bundle --outfile=public/app.js --format=iife --target=es2020 --sourcemap",
+    "build:client": "esbuild src/client/main.ts --bundle --outfile=public/js/app.js --format=iife --target=es2020 --sourcemap",
     "build:server": "tsc -p tsconfig.server.json",
     "build": "npm run build:client && npm run build:server",
-    "watch:client": "esbuild src/client/main.ts --bundle --outfile=public/app.js --format=iife --target=es2020 --sourcemap --watch",
+    "watch:client": "esbuild src/client/main.ts --bundle --outfile=public/js/app.js --format=iife --target=es2020 --sourcemap --watch",
     "dev:server": "tsx watch src/server/index.ts",
     "dev": "npm run build:client && npm run dev:server",
     "start": "tsx src/server/index.ts",

@@ -1,0 +1,109 @@
+/* =========================================================
+ * BASE — Variables, Reset, Container
+ * ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --terracotta:    #c96442;
+  --coral:         #d97757;
+
+  --parchment:     #f5f4ed;
+  --ivory:         #faf9f5;
+  --white:         #ffffff;
+  --warm-sand:     #e8e6dc;
+  --dark-surface:  #30302e;
+
+  --near-black:    #141413;
+  --charcoal-warm: #4d4c48;
+  --olive-gray:    #5e5d59;
+  --stone-gray:    #87867f;
+  --dark-warm:     #3d3d3a;
+  --warm-silver:   #b0aea5;
+
+  --border-cream:  #f0eee6;
+  --border-warm:   #e8e6dc;
+  --border-dark:   #30302e;
+  --ring-warm:     #d1cfc5;
+  --ring-deep:     #c2c0b6;
+
+  --error-crimson: #b53333;
+  --focus-blue:    #3898ec;
+
+  --r-6:  6px;
+  --r-8:  8px;
+  --r-12: 12px;
+  --r-16: 16px;
+  --r-24: 24px;
+  --r-32: 32px;
+
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --parchment:     #1c1b18;
+  --ivory:         #252320;
+  --white:         #302e2a;
+  --warm-sand:     #2a2826;
+  --dark-surface:  #181715;
+  --border-cream:  #333130;
+  --border-warm:   #3a3835;
+  --ring-warm:     #4a4745;
+  --ring-deep:     #575450;
+  --near-black:    #f0ede6;
+  --charcoal-warm: #c8c5be;
+  --olive-gray:    #a09d96;
+  --stone-gray:    #6e6c66;
+  --dark-warm:     #b0aea5;
+  --warm-silver:   #d4d1ca;
+}
+
+/* ── Reset ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  margin: 0; padding: 0;
+  overflow-x: hidden; width: 100%;
+}
+
+body {
+  margin: 0; padding: 0;
+  background: var(--parchment);
+  color: var(--near-black);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  overflow-x: hidden; width: 100%;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+input, textarea, select { font-family: inherit; }
+
+/* ── Container ─────────────────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+@media (min-width: 480px) { .container { padding: 0 20px; } }
+@media (min-width: 768px) { .container { padding: 0 24px; } }
+
+/* ── Shared typography helpers ─────────────────────────── */
+.overline,
+.section-overline {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.12px;
+  text-transform: uppercase;
+  color: var(--stone-gray);
+  margin: 0 0 12px;
+}

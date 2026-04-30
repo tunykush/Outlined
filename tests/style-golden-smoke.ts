@@ -300,6 +300,57 @@ const fixtures: Fixture[] = [
     },
     expected: '[1] ChatGPT (2026), OpenAI. Accessed: Feb. 2, 2026. [Online]. Available: https://chat.openai.com/share/1234567812345',
   },
+  {
+    name: 'APA 7th journal article multiple authors with DOI',
+    style: 'apa7',
+    source: 'journal',
+    data: {
+      authors: [
+        { family: 'Chen', given: 'M.' },
+        { family: 'Ellis', given: 'P.' },
+        { family: 'Tran', given: 'D.' },
+      ],
+      year: '2026',
+      title: 'Outlined: A reference extraction engine',
+      journal: 'ACM Digital Library',
+      volume: '12',
+      issue: '1',
+      pages: '45-67',
+      doi: '10.1145/outlined.2026',
+    },
+    expected: 'Chen, M., Ellis, P., &amp; Tran, D. (2026). Outlined: A reference extraction engine. ACM Digital Library, 12(1), 45-67. https://doi.org/10.1145/outlined.2026',
+  },
+  {
+    name: 'IEEE journal article from RMIT extracted reference',
+    style: 'ieee',
+    source: 'journal',
+    data: {
+      authors: [
+        { family: 'Kumar', given: 'R.' },
+        { family: 'Patel', given: 'A.' },
+      ],
+      year: '2025',
+      title: 'Machine learning approaches to reference extraction',
+      journal: 'IEEE Transactions',
+      volume: '45',
+      pages: '123-145',
+      doi: '10.1109/icdm.2025.123456',
+    },
+    expected: '[1] R. Kumar and A. Patel, "Machine learning approaches to reference extraction," IEEE Transactions, vol. 45, pp. 123-145, 2025, doi: 10.1109/icdm.2025.123456.',
+  },
+  {
+    name: 'APA 7th webpage with organization author',
+    style: 'apa7',
+    source: 'webpage',
+    data: {
+      authors: [{ family: 'RMIT University', given: '', isOrganisation: true }],
+      year: '2026',
+      title: 'How to cite sources properly',
+      siteName: 'RMIT Library',
+      url: 'https://www.lib.rmit.edu.au/how-to-cite',
+    },
+    expected: 'RMIT University. (2026). How to cite sources properly. RMIT Library. https://www.lib.rmit.edu.au/how-to-cite',
+  },
 ];
 
 let failed = 0;

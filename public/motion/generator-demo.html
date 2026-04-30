@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: #141413;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  color: #f0ede6;
+}
+
+.stage {
+  width: 100%; height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mock app UI */
+.mock-app {
+  width: min(680px, 92%);
+  background: #1c1b18;
+  border: 1px solid #2e2d29;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+}
+
+/* Mock top bar */
+.mock-bar {
+  background: #111110;
+  border-bottom: 1px solid #2e2d29;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mock-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #3a3935;
+}
+.mock-dot:nth-child(1) { background: #ff5f57; }
+.mock-dot:nth-child(2) { background: #febc2e; }
+.mock-dot:nth-child(3) { background: #28c840; }
+.mock-url-bar {
+  flex: 1;
+  background: #1c1b18;
+  border: 1px solid #2e2d29;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  color: #5a5954;
+  margin-left: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.mock-url-bar span { color: #6a9fcf; }
+
+/* Style bar */
+.mock-style-bar {
+  padding: 12px 16px;
+  border-bottom: 1px solid #2e2d29;
+  display: flex;
+  gap: 6px;
+}
+.mock-style-chip {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid #2e2d29;
+  color: #5a5954;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.mock-style-chip.active {
+  background: #c96442;
+  color: #f0ede6;
+  border-color: #c96442;
+}
+
+/* Content area */
+.mock-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.mock-col {
+  padding: 16px;
+  border-right: 1px solid #2e2d29;
+}
+.mock-col:last-child { border-right: none; }
+
+.mock-field-label {
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5a5954;
+  margin-bottom: 6px;
+}
+
+.mock-input {
+  width: 100%;
+  background: #141413;
+  border: 1px solid #2e2d29;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.75rem;
+  color: #c8c4bd;
+  margin-bottom: 10px;
+  font-family: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.mock-input.url-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-color: #2e2d29;
+  animation: url-focus 28s infinite;
+}
+@keyframes url-focus {
+  0%, 5%    { border-color: #2e2d29; }
+  10%       { border-color: #3a72a8; box-shadow: 0 0 0 2px rgba(56,114,168,0.2); }
+  60%       { border-color: #3a72a8; box-shadow: 0 0 0 2px rgba(56,114,168,0.2); }
+  65%       { border-color: #2e2d29; box-shadow: none; }
+  100%      { border-color: #2e2d29; }
+}
+
+.url-text-cursor {
+  display: inline-block;
+  width: 2px; height: 12px;
+  background: #c96442;
+  margin-left: 1px;
+  vertical-align: middle;
+  animation: cursor-blink 28s infinite;
+}
+@keyframes cursor-blink {
+  0%, 3%   { opacity: 1; }
+  4%       { opacity: 0; }
+  5%       { opacity: 1; }
+  6%       { opacity: 0; }
+  7%       { opacity: 1; }
+  8%       { opacity: 0; }
+  9%       { opacity: 1; }
+  10%      { opacity: 0; }
+  35%      { opacity: 0; }
+  100%     { opacity: 0; }
+}
+
+/* Typed URL text — reveals char by char */
+.typed-url {
+  color: #8a8580;
+  font-size: 0.72rem;
+  animation: type-url 28s infinite;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 0;
+  display: inline-block;
+}
+@keyframes type-url {
+  0%    { max-width: 0; color: #8a8580; }
+  2%    { max-width: 20px; }
+  4%    { max-width: 50px; }
+  6%    { max-width: 80px; }
+  8%    { max-width: 160px; color: #c96442; }
+  100%  { max-width: 160px; color: #c96442; }
+}
+
+.fetch-btn {
+  margin-left: auto;
+  background: #c96442;
+  color: #f0ede6;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  animation: btn-state 28s infinite;
+}
+.fetch-spinner {
+  width: 8px; height: 8px;
+  border: 1.5px solid rgba(250,249,245,0.3);
+  border-top-color: #f0ede6;
+  border-radius: 50%;
+  animation: spin-btn 28s infinite;
+}
+@keyframes spin-btn {
+  0%, 9%    { transform: rotate(0deg); animation-play-state: paused; }
+  10%       { animation-play-state: running; }
+  30%       { animation-play-state: running; transform: rotate(1080deg); }
+  31%       { animation-play-state: paused; transform: rotate(0deg); }
+  100%      { animation-play-state: paused; }
+}
+@keyframes btn-state {
+  0%, 9%    { opacity: 1; }
+  10%, 11%  { opacity: 0.7; }
+  12%, 29%  { opacity: 0.6; }
+  30%       { opacity: 1; }
+  100%      { opacity: 1; }
+}
+.btn-label { animation: btn-label 28s infinite; }
+@keyframes btn-label {
+  0%, 9%   { opacity: 1; }
+  10%, 29% { opacity: 0; }
+  30%      { opacity: 1; }
+  100%     { opacity: 1; }
+}
+.btn-loading { position: absolute; animation: btn-loading 28s infinite; opacity: 0; }
+@keyframes btn-loading {
+  0%, 9%   { opacity: 0; }
+  10%, 29% { opacity: 1; }
+  30%      { opacity: 0; }
+  100%     { opacity: 0; }
+}
+
+/* Populated fields */
+.mock-field-val {
+  opacity: 0;
+  animation: field-appear 28s infinite;
+}
+@keyframes field-appear {
+  0%, 29%  { opacity: 0; }
+  33%      { opacity: 1; }
+  100%     { opacity: 1; }
+}
+
+/* Output */
+.mock-output-label {
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5a5954;
+  margin-bottom: 8px;
+}
+.mock-output-block {
+  background: #141413;
+  border: 1px solid #2e2d29;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: #8a8580;
+  margin-bottom: 10px;
+  min-height: 50px;
+  position: relative;
+  overflow: hidden;
+}
+.output-text {
+  color: #c8c4bd;
+  opacity: 0;
+  display: inline;
+  max-width: 0;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.output-example-1 {
+  animation: output-type-1 28s infinite;
+}
+
+.output-example-2 {
+  animation: output-type-2 28s infinite;
+  display: block;
+  margin-top: 8px;
+}
+
+@keyframes output-type-1 {
+  0%, 33%  { opacity: 0; max-width: 0; }
+  38%      { opacity: 1; max-width: 600px; }
+  65%      { opacity: 1; max-width: 600px; }
+  70%      { opacity: 0; max-width: 600px; }
+  100%     { opacity: 0; max-width: 0; }
+}
+
+@keyframes output-type-2 {
+  0%, 65%  { opacity: 0; max-width: 0; }
+  70%      { opacity: 1; max-width: 600px; }
+  100%     { opacity: 1; max-width: 600px; }
+}
+
+.mock-intext {
+  color: #8a8580;
+  font-size: 0.72rem;
+  opacity: 0;
+  animation: intext-appear 28s infinite;
+}
+@keyframes intext-appear {
+  0%, 35%  { opacity: 0; }
+  40%      { opacity: 1; }
+  100%     { opacity: 1; }
+}
+
+.mock-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #252320;
+  border: 1px solid #2e2d29;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #8a8580;
+  margin-top: 8px;
+  opacity: 0;
+  animation: copy-appear 28s infinite;
+}
+.copy-icon { font-size: 0.75rem; }
+.copy-text { animation: copy-text 28s infinite; }
+@keyframes copy-appear {
+  0%, 37%  { opacity: 0; }
+  42%      { opacity: 1; }
+  100%     { opacity: 1; }
+}
+@keyframes copy-text {
+  0%, 55%    { color: #8a8580; }
+  56%, 68%   { color: #5aa86e; }
+  69%        { color: #8a8580; }
+  100%       { color: #8a8580; }
+}
+
+/* Copy success flash */
+.copy-success {
+  position: absolute;
+  inset: 0;
+  background: rgba(90,168,110,0.08);
+  border: 1px solid rgba(90,168,110,0.3);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #5aa86e;
+  opacity: 0;
+  animation: copy-flash 28s infinite;
+}
+@keyframes copy-flash {
+  0%, 55%  { opacity: 0; }
+  56%      { opacity: 1; }
+  68%      { opacity: 1; }
+  70%      { opacity: 0; }
+  100%     { opacity: 0; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="mock-app">
+
+    <!-- Browser bar -->
+    <div class="mock-bar">
+      <div class="mock-dot"></div>
+      <div class="mock-dot"></div>
+      <div class="mock-dot"></div>
+      <div class="mock-url-bar"><span>outlined.app</span>/app</div>
+    </div>
+
+    <!-- Style chips -->
+    <div class="mock-style-bar">
+      <div class="mock-style-chip active">APA 7th</div>
+      <div class="mock-style-chip">RMIT Harvard</div>
+      <div class="mock-style-chip">IEEE</div>
+    </div>
+
+    <!-- Main content -->
+    <div class="mock-content">
+
+      <!-- Input column -->
+      <div class="mock-col">
+        <div class="mock-field-label">URL</div>
+        <div class="mock-input url-input">
+          <span class="typed-url">https://doi.org/10.1016/j.cub.24</span>
+          <span class="url-text-cursor"></span>
+          <div class="fetch-btn" style="position:relative;">
+            <span class="btn-label">Auto-fetch</span>
+            <span class="btn-loading" style="display:flex;align-items:center;gap:4px;">
+              <span class="fetch-spinner" style="animation:spin 0.6s linear infinite;"></span> Fetching
+            </span>
+          </div>
+        </div>
+
+        <div class="mock-field-val">
+          <div class="mock-field-label">Title</div>
+          <div class="mock-input">How neural circuits encode memory</div>
+
+          <div class="mock-field-label">Authors</div>
+          <div class="mock-input">Smith, J. · Lee, K.</div>
+
+          <div class="mock-field-label">Journal · Year · Volume</div>
+          <div class="mock-input">Current Biology · 2024 · 34(3)</div>
+        </div>
+      </div>
+
+      <!-- Output column -->
+      <div class="mock-col">
+        <div class="mock-output-label">Reference entry</div>
+        <div class="mock-output-block">
+          <span class="output-text output-example-1">
+            Smith, J., &amp; Lee, K. (2024). How neural circuits encode memory. <em>Current Biology</em>, <em>34</em>(3), 112–128. https://doi.org/10.1016/j.cub.2024.01.052
+          </span>
+          <span class="output-text output-example-2">
+            Smith J and Lee K (2024) 'How neural circuits encode memory', Current Biology, 34(3):112-128.
+          </span>
+          <div class="copy-success">✓ Copied to clipboard</div>
+        </div>
+
+        <div class="mock-output-label">In-text</div>
+        <div class="mock-output-block" style="min-height:34px;">
+          <span class="mock-intext">(Smith &amp; Lee, 2024)</span>
+        </div>
+
+        <div class="mock-copy-btn">
+          <span class="copy-icon">⎘</span>
+          <span class="copy-text">Copy reference</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>
