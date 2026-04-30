@@ -27,9 +27,18 @@
     <div class="nav-right">
       <div class="nav-links">
         <a href="#how">How it works</a>
-        <a href="#styles">Styles</a>
-        <a href="https://www.lib.rmit.edu.au/easy-cite/" target="_blank" rel="noopener">RMIT source ↗</a>
+        <div class="nav-dropdown">
+          <button type="button" class="nav-dropdown-btn">Styles</button>
+          <div class="nav-dropdown-menu">
+            <a href="/apa7.html">APA 7th</a>
+            <a href="/harvard.html">RMIT Harvard</a>
+            <a href="/ieee.html">IEEE</a>
+          </div>
+        </div>
       </div>
+      <button type="button" class="nav-mobile-menu" id="navMobileMenu" aria-label="Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
       <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">
         <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -37,6 +46,14 @@
     </div>
   </div>
 </nav>
+
+<!-- Mobile menu panel -->
+<div class="nav-mobile-panel" id="navMobilePanel">
+  <a href="#how">How it works</a>
+  <a href="/apa7.html">APA 7th</a>
+  <a href="/harvard.html">RMIT Harvard</a>
+  <a href="/ieee.html">IEEE</a>
+</div>
 
 <!-- ============================== HERO ============================== -->
 <header class="hero">
@@ -239,6 +256,42 @@
     html.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
   });
+})();
+
+// Dropdown menu
+(function () {
+  var dropdownBtn = document.querySelector('.nav-dropdown-btn');
+  var dropdownMenu = document.querySelector('.nav-dropdown-menu');
+
+  if (dropdownBtn) {
+    dropdownBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      dropdownMenu.classList.toggle('active');
+    });
+
+    document.addEventListener('click', function () {
+      dropdownMenu.classList.remove('active');
+    });
+  }
+})();
+
+// Mobile menu
+(function () {
+  var menuBtn = document.getElementById('navMobileMenu');
+  var menuPanel = document.getElementById('navMobilePanel');
+
+  if (menuBtn) {
+    menuBtn.addEventListener('click', function () {
+      menuPanel.classList.toggle('active');
+    });
+
+    var menuLinks = menuPanel.querySelectorAll('a');
+    menuLinks.forEach(function (link) {
+      link.addEventListener('click', function () {
+        menuPanel.classList.remove('active');
+      });
+    });
+  }
 })();
 </script>
 </body>

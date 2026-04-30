@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Citation Styles — Outlined</title>
+<meta name="description" content="Explore the rules for APA 7th, RMIT Harvard, and IEEE citation styles." />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<script>(function(){var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})();</script>
+<link rel="stylesheet" href="/styles.css" />
+<style>
+  /* Styles page specific CSS */
+  .styles-grid {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (min-width: 768px) {
+    .styles-grid { gap: 32px; }
+  }
+
+  @media (max-width: 1023px) {
+    .styles-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .styles-sidebar {
+    background: var(--ivory);
+    border: 1px solid var(--border-cream);
+    border-radius: var(--r-16);
+    padding: 20px 16px;
+    box-shadow: rgba(0,0,0,0.03) 0px 4px 24px;
+  }
+
+  @media (min-width: 480px) {
+    .styles-sidebar { padding: 24px 20px; border-radius: 20px; }
+  }
+
+  @media (min-width: 768px) {
+    .styles-sidebar { padding: 32px; }
+  }
+
+  @media (max-width: 1023px) {
+    .styles-sidebar {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .styles-section-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.12px;
+    text-transform: uppercase;
+    color: var(--stone-gray);
+    margin: 0 0 12px;
+    display: block;
+  }
+
+  @media (min-width: 480px) {
+    .styles-section-label { margin: 0 0 14px; }
+  }
+
+  .styles-list {
+    list-style: none;
+    margin: 0 0 20px;
+    padding: 0;
+  }
+
+  @media (min-width: 480px) {
+    .styles-list { margin: 0 0 24px; }
+  }
+
+  .styles-item {
+    margin-bottom: 6px;
+  }
+
+  @media (min-width: 480px) {
+    .styles-item { margin-bottom: 8px; }
+  }
+
+  .styles-item button {
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--r-8);
+    color: var(--charcoal-warm);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  @media (min-width: 480px) {
+    .styles-item button { padding: 10px 12px; font-size: 0.94rem; }
+  }
+
+  .styles-item button:hover {
+    background: var(--border-cream);
+    border-color: var(--ring-warm);
+  }
+
+  .styles-item button.active {
+    background: var(--terracotta);
+    color: var(--ivory);
+    border-color: var(--terracotta);
+  }
+
+  .styles-toggle-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .styles-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: var(--charcoal-warm);
+  }
+
+  @media (min-width: 480px) {
+    .styles-toggle { font-size: 0.875rem; }
+  }
+
+  .styles-toggle input {
+    width: 40px;
+    height: 24px;
+    cursor: pointer;
+    appearance: none;
+    background: var(--border-warm);
+    border: none;
+    border-radius: 12px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .styles-toggle input:checked {
+    background: var(--terracotta);
+  }
+
+  .styles-toggle input::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    left: 2px;
+    top: 2px;
+    transition: left 0.2s;
+  }
+
+  .styles-toggle input:checked::before {
+    left: 18px;
+  }
+
+  .styles-content {
+    background: var(--ivory);
+    border: 1px solid var(--border-cream);
+    border-radius: var(--r-16);
+    padding: 20px 16px;
+    box-shadow: rgba(0,0,0,0.03) 0px 4px 24px;
+    display: none;
+  }
+
+  .styles-content.active {
+    display: block;
+  }
+
+  @media (min-width: 480px) {
+    .styles-content { padding: 24px 20px; border-radius: 20px; }
+  }
+
+  @media (min-width: 768px) {
+    .styles-content { padding: 32px; }
+  }
+
+  .styles-header {
+    margin-bottom: 28px;
+  }
+
+  @media (min-width: 480px) {
+    .styles-header { margin-bottom: 32px; }
+  }
+
+  .styles-header h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.25rem, 4vw, 1.6rem);
+    font-weight: 500;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    color: var(--near-black);
+  }
+
+  @media (min-width: 480px) {
+    .styles-header h1 { margin: 0 0 14px; }
+  }
+
+  .styles-header h1 em {
+    font-style: italic;
+    color: var(--terracotta);
+  }
+
+  .styles-header p {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--olive-gray);
+    margin: 0;
+  }
+
+  @media (min-width: 480px) {
+    .styles-header p { font-size: 0.94rem; }
+  }
+
+  .styles-rule {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border-cream);
+  }
+
+  @media (min-width: 480px) {
+    .styles-rule { margin-bottom: 28px; padding-bottom: 28px; }
+  }
+
+  .styles-rule:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .styles-rule-num {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: var(--terracotta);
+    padding: 3px 8px;
+    background: rgba(201, 100, 66, 0.08);
+    border-radius: var(--r-6);
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+
+  @media (min-width: 480px) {
+    .styles-rule-num { font-size: 0.8rem; margin-bottom: 10px; }
+  }
+
+  .styles-rule-title {
+    font-family: var(--font-serif);
+    font-size: clamp(1.1rem, 3vw, 1.25rem);
+    font-weight: 500;
+    color: var(--near-black);
+    margin: 0 0 10px;
+  }
+
+  @media (min-width: 480px) {
+    .styles-rule-title { margin: 0 0 12px; }
+  }
+
+  .styles-rule-desc {
+    font-size: 0.875rem;
+    color: var(--charcoal-warm);
+    line-height: 1.6;
+    margin: 0 0 12px;
+  }
+
+  @media (min-width: 480px) {
+    .styles-rule-desc { font-size: 0.94rem; margin: 0 0 14px; }
+  }
+
+  .styles-rule-example {
+    background: var(--parchment);
+    border: 1px solid var(--border-cream);
+    border-radius: var(--r-12);
+    padding: 12px 14px;
+    font-family: var(--font-serif);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--near-black);
+  }
+
+  @media (min-width: 480px) {
+    .styles-rule-example { padding: 14px 16px; font-size: 0.94rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="logo" href="/" aria-label="Outlined — home">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 44 32" xmlns="http://www.w3.org/2000/svg" focusable="false">
+          <path d="M8 4 L4 4 L4 28 L8 28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" class="logo-bracket"/>
+          <circle cx="22" cy="16" r="9" fill="none" stroke="currentColor" stroke-width="3" class="logo-o"/>
+          <path d="M36 4 L40 4 L40 28 L36 28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter" class="logo-bracket"/>
+        </svg>
+      </span>
+      <span class="logo-text">Outlined</span>
+    </a>
+    <div class="nav-right">
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/#how">How it works</a>
+      </div>
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="container main-styles">
+  <div class="styles-grid">
+    <!-- SIDEBAR -->
+    <aside class="styles-sidebar">
+      <span class="styles-section-label">Citation Styles</span>
+      <ul class="styles-list">
+        <li class="styles-item">
+          <button type="button" class="style-btn active" data-style="apa7">
+            <span style="color: var(--terracotta); font-weight: 600; margin-right: 4px;">1</span>APA 7th
+          </button>
+        </li>
+        <li class="styles-item">
+          <button type="button" class="style-btn" data-style="harvard">
+            <span style="color: var(--terracotta); font-weight: 600; margin-right: 4px;">2</span>RMIT Harvard
+          </button>
+        </li>
+        <li class="styles-item">
+          <button type="button" class="style-btn" data-style="ieee">
+            <span style="color: var(--terracotta); font-weight: 600; margin-right: 4px;">3</span>IEEE
+          </button>
+        </li>
+      </ul>
+
+      <span class="styles-section-label">Settings</span>
+      <div class="styles-toggle-group">
+        <label class="styles-toggle">
+          <input type="checkbox" id="autoFetch" checked />
+          <span>Auto-fetch on paste</span>
+        </label>
+        <label class="styles-toggle">
+          <input type="checkbox" id="showMetascan" checked />
+          <span>Show metascan notes</span>
+        </label>
+        <label class="styles-toggle">
+          <input type="checkbox" id="hangingIndent" />
+          <span>Hanging indent reminder</span>
+        </label>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <!-- APA 7th -->
+    <div id="apa7-content" class="style-content active">
+      <div class="styles-header">
+        <h1>The rules of <em>APA 7th</em>, encoded.</h1>
+        <p>Author shape, title sentence case, italics, DOI prefix, and the article–number rule for online journals — every line below is implemented in src/shared/citation/styles/apa7.ts.</p>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">01</span>
+        <h3 class="styles-rule-title">Author format</h3>
+        <p class="styles-rule-desc">Family, F. M. — comma-then-initials. Use ampersand before the final author. List up to 20 authors; for 21+, list 19, ellipsis, last.</p>
+        <div class="styles-rule-example">Smith, J. A., Nguyen, T., & Patel, R. K. (2024).</div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">02</span>
+        <h3 class="styles-rule-title">Title case</h3>
+        <p class="styles-rule-desc">Reference list titles use sentence case — capitalize first word, first word after colon, and proper nouns only. Italicise the journal/site name, not the article title.</p>
+        <div class="styles-rule-example">On methods of citation. <em>Journal of Library Studies</em></div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">03</span>
+        <h3 class="styles-rule-title">DOI prefix</h3>
+        <p class="styles-rule-desc">DOIs are normalised to https://doi.org/… and never end in a full stop. doi:… form is rewritten by APA metascan.</p>
+        <div class="styles-rule-example">https://doi.org/10.1234/jls.2024.0045</div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">04</span>
+        <h3 class="styles-rule-title">Article number rule</h3>
+        <p class="styles-rule-desc">Online journals without page ranges may use an article number. APA emits "Article 12" in place of pages.</p>
+        <div class="styles-rule-example">PLOS ONE, 19(4), Article 12.</div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">05</span>
+        <h3 class="styles-rule-title">No-author shape</h3>
+        <p class="styles-rule-desc">When no author is given, the title moves into the author position; in-text uses a short title in quotes.</p>
+        <div class="styles-rule-example">On methods of citation. (2024). <em>Nature</em>. https://www.nature.com/…</div>
+      </div>
+    </div>
+
+    <!-- Harvard -->
+    <div id="harvard-content" class="style-content">
+      <div class="styles-header">
+        <h1>The rules of <em>RMIT Harvard</em>, encoded.</h1>
+        <p>Author surname plus initials with no comma; curly single quotes around article titles; doi:… prefix; "accessed" date in Day Month Year format.</p>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">01</span>
+        <h3 class="styles-rule-title">Author format</h3>
+        <p class="styles-rule-desc">Family I — surname then initials, no comma, no period. Use "&" or "and" depending on context.</p>
+        <div class="styles-rule-example">Smith JA & Nguyen T 2024</div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">02</span>
+        <h3 class="styles-rule-title">Curly quotes</h3>
+        <p class="styles-rule-desc">Article and chapter titles sit inside curly single quotation marks (U+2018 / U+2019). Webpage and report titles are italicised instead.</p>
+        <div class="styles-rule-example">'On methods of citation'</div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">03</span>
+        <h3 class="styles-rule-title">doi: prefix</h3>
+        <p class="styles-rule-desc">Harvard prefers the bare doi:… form (no full stop after).</p>
+        <div class="styles-rule-example">doi:10.1234/jls.2024.0045</div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">04</span>
+        <h3 class="styles-rule-title">Accessed date</h3>
+        <p class="styles-rule-desc">For online sources without a clear publication date, append accessed Day Month Year.</p>
+        <div class="styles-rule-example">accessed 12 March 2024</div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">05</span>
+        <h3 class="styles-rule-title">No invented n.p.</h3>
+        <p class="styles-rule-desc">When publication place is missing, Harvard does NOT invent "n.p." — leave it out and let the metascan flag it.</p>
+        <div class="styles-rule-example">Routledge, London.</div>
+      </div>
+    </div>
+
+    <!-- IEEE -->
+    <div id="ieee-content" class="style-content">
+      <div class="styles-header">
+        <h1>The rules of <em>IEEE</em>, encoded.</h1>
+        <p>Numbered references in brackets, initials-first author format, and a placeholder [1] users renumber by first appearance in their final document.</p>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">01</span>
+        <h3 class="styles-rule-title">Bracketed numbers</h3>
+        <p class="styles-rule-desc">Each in-text citation is a bracketed number: [1], [2], [3]… Renumber by first appearance when finalising your reference list.</p>
+        <div class="styles-rule-example">As shown in [1].</div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">02</span>
+        <h3 class="styles-rule-title">Initials-first authors</h3>
+        <p class="styles-rule-desc">IEEE writes the initials before the surname: J. A. Smith. Use "and" before the last author; up to 6 authors then et al.</p>
+        <div class="styles-rule-example">J. A. Smith, T. Nguyen, and R. K. Patel</div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">03</span>
+        <h3 class="styles-rule-title">Quoted article titles</h3>
+        <p class="styles-rule-desc">Article titles are placed in straight double quotes; journal/conference names italicised.</p>
+        <div class="styles-rule-example">"On methods of citation," <em>Journal of Library Studies</em></div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">04</span>
+        <h3 class="styles-rule-title">DOI form</h3>
+        <p class="styles-rule-desc">IEEE accepts doi: 10.… or the full https form. We default to the latter.</p>
+        <div class="styles-rule-example">doi: 10.1234/jls.2024.0045</div>
+      </div>
+
+      <div class="styles-rule">
+        <span class="styles-rule-num">05</span>
+        <h3 class="styles-rule-title">Renumbering note</h3>
+        <p class="styles-rule-desc">Outlined emits [1] as a placeholder. The metascan adds a note reminding you to renumber by final order of appearance.</p>
+        <div class="styles-rule-example">Note: renumber references by first appearance.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <p>Outlined · TypeScript full-stack · Built on rules from <a href="https://www.lib.rmit.edu.au/easy-cite/" target="_blank" rel="noopener">RMIT Library Easy Cite</a>.</p>
+  </div>
+</footer>
+
+<script>
+// Theme toggle
+(function () {
+  var btn = document.getElementById('themeToggle');
+  var html = document.documentElement;
+  btn.addEventListener('click', function () {
+    var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  });
+})();
+
+// Style switcher
+(function () {
+  var styleButtons = document.querySelectorAll('.style-btn');
+  styleButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var styleKey = this.getAttribute('data-style');
+
+      // Update active button
+      styleButtons.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+
+      // Update content visibility
+      var allContents = document.querySelectorAll('.style-content');
+      allContents.forEach(function (content) { content.classList.remove('active'); });
+      var targetContent = document.getElementById(styleKey + '-content');
+      if (targetContent) {
+        targetContent.classList.add('active');
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -161,11 +161,131 @@ input, textarea, select { font-family: inherit; }
   gap: 20px;
   font-size: 0.875rem;
   color: var(--olive-gray);
+  align-items: center;
 }
 
 .nav-links a:hover { color: var(--near-black); }
 
-@media (max-width: 640px) { .nav-links { display: none; } }
+.nav-dropdown {
+  position: relative;
+}
+
+.nav-dropdown-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.nav-dropdown-btn:hover {
+  color: var(--near-black);
+}
+
+.nav-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--ivory);
+  border: 1px solid var(--border-cream);
+  border-radius: var(--r-12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  margin-top: 8px;
+  display: none;
+  flex-direction: column;
+  min-width: 180px;
+}
+
+.nav-dropdown-menu.active {
+  display: flex;
+}
+
+.nav-dropdown-menu a {
+  padding: 10px 16px;
+  color: var(--near-black);
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--border-cream);
+}
+
+.nav-dropdown-menu a:last-child {
+  border-bottom: none;
+}
+
+.nav-dropdown-menu a:hover {
+  background: var(--parchment);
+}
+
+.nav-mobile-menu {
+  display: none;
+  width: 34px;
+  height: 34px;
+  background: none;
+  border: 1px solid var(--border-warm);
+  border-radius: var(--r-8);
+  color: var(--stone-gray);
+  cursor: pointer;
+  transition: all 0.15s;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nav-mobile-menu:hover {
+  color: var(--near-black);
+  background: var(--border-cream);
+  border-color: var(--ring-warm);
+}
+
+.nav-mobile-menu svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 640px) {
+  .nav-links { display: none; }
+
+  .nav-mobile-menu {
+    display: flex;
+  }
+}
+
+.nav-mobile-panel {
+  display: none;
+  position: fixed;
+  top: 54px;
+  left: 0;
+  right: 0;
+  background: var(--ivory);
+  border-bottom: 1px solid var(--border-cream);
+  padding: 16px;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 40;
+  max-height: calc(100vh - 54px);
+  overflow-y: auto;
+}
+
+.nav-mobile-panel.active {
+  display: flex;
+}
+
+.nav-mobile-panel a {
+  padding: 12px;
+  color: var(--near-black);
+  font-size: 0.94rem;
+  text-decoration: none;
+  border-radius: var(--r-8);
+  transition: background 0.15s;
+}
+
+.nav-mobile-panel a:hover {
+  background: var(--parchment);
+}
 
 /* ====================== HERO ====================== */
 .hero {
