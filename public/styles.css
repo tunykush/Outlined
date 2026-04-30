@@ -220,6 +220,7 @@ input, textarea, select { font-family: inherit; }
   background: var(--parchment);
 }
 
+/* Hamburger button */
 .nav-mobile-menu {
   display: none;
   width: 34px;
@@ -229,10 +230,11 @@ input, textarea, select { font-family: inherit; }
   border-radius: var(--r-8);
   color: var(--stone-gray);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  padding: 0;
 }
 
 .nav-mobile-menu:hover {
@@ -241,51 +243,123 @@ input, textarea, select { font-family: inherit; }
   border-color: var(--ring-warm);
 }
 
-.nav-mobile-menu svg {
-  width: 20px;
-  height: 20px;
-}
-
 @media (max-width: 640px) {
   .nav-links { display: none; }
-
-  .nav-mobile-menu {
-    display: flex;
-  }
+  .nav-mobile-menu { display: flex; }
 }
 
+/* Hamburger → X animation */
+.hamburger-icon { display: block; overflow: visible; }
+
+.hamburger-line-1,
+.hamburger-line-2,
+.hamburger-line-3 {
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.nav-mobile-menu.is-open .hamburger-line-1 {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.nav-mobile-menu.is-open .hamburger-line-2 {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.nav-mobile-menu.is-open .hamburger-line-3 {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* Full-screen mobile panel */
 .nav-mobile-panel {
-  display: none;
+  display: flex;
   position: fixed;
-  top: 54px;
+  top: 0;
   left: 0;
   right: 0;
+  bottom: 0;
+  z-index: 99;
   background: var(--ivory);
-  border-bottom: 1px solid var(--border-cream);
-  padding: 16px;
   flex-direction: column;
-  gap: 12px;
-  z-index: 40;
-  max-height: calc(100vh - 54px);
-  overflow-y: auto;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-100%);
+  transition: visibility 0s 0.32s, opacity 0.32s ease, transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nav-mobile-panel.active {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  transition: visibility 0s 0s, opacity 0.32s ease, transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-mobile-panel-head {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-cream);
+  flex-shrink: 0;
 }
 
-.nav-mobile-panel a {
-  padding: 12px;
-  color: var(--near-black);
-  font-size: 0.94rem;
-  text-decoration: none;
+.nav-mobile-panel-close {
+  width: 34px;
+  height: 34px;
+  background: none;
+  border: 1px solid var(--border-warm);
   border-radius: var(--r-8);
-  transition: background 0.15s;
+  color: var(--stone-gray);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  padding: 0;
 }
 
-.nav-mobile-panel a:hover {
-  background: var(--parchment);
+.nav-mobile-panel-close:hover {
+  color: var(--near-black);
+  background: var(--border-cream);
+  border-color: var(--ring-warm);
 }
+
+.nav-mobile-links {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.nav-mobile-links a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  color: var(--charcoal-warm);
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 1px solid var(--border-cream);
+  transition: background 0.12s, color 0.12s;
+}
+
+.nav-mobile-links a:first-child { border-top: 1px solid var(--border-cream); }
+.nav-mobile-links a:hover { background: var(--parchment); color: var(--near-black); }
+
+.nav-mobile-links a .mobile-link-arrow {
+  color: var(--stone-gray);
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+/* Dark mode */
+[data-theme="dark"] .nav-mobile-panel { background: #1c1b18; }
+[data-theme="dark"] .nav-mobile-panel-head { border-bottom-color: #333130; }
+[data-theme="dark"] .nav-mobile-links a { border-color: #333130; color: #c8c5be; }
+[data-theme="dark"] .nav-mobile-links a:hover { background: #252320; color: #f0ede6; }
 
 /* ====================== HERO ====================== */
 .hero {
