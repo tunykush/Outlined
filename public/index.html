@@ -347,26 +347,50 @@
   if (!logEl || !resultEl) return;
 
   var STEPS = [
-    { k: 'cmd',    t: '> GET https://nature.com/articles/s41586-024-07234-x',  ms: 300  },
-    { k: 'ok',     t: '  200 OK · 52 KB · 1.1s',                               ms: 1050 },
-    { k: 'div',    t: '  ────────────────────────────────────────────',          ms: 1500 },
-    { k: 'lbl',    t: 'PARSE METADATA',                                         ms: 1700 },
-    { k: 'hit',    t: '✓  JSON-LD structured data detected',                    ms: 2200 },
-    { k: 'fld',    t: '   title      "On rapid neural processing methods"',     ms: 2700 },
-    { k: 'fld',    t: '   authors    Smith, J. A. · Nguyen, T. · Patel, R. K.',ms: 3150 },
-    { k: 'fld',    t: '   year       2024',                                     ms: 3550 },
-    { k: 'fld',    t: '   journal    Nature',                                   ms: 3850 },
-    { k: 'fld',    t: '   vol / iss  627 (8003) · pp. 45–52',                  ms: 4150 },
-    { k: 'fld',    t: '   doi        10.1038/s41586-024-07234-x',               ms: 4450 },
-    { k: 'div',    t: '  ────────────────────────────────────────────',          ms: 4900 },
-    { k: 'lbl',    t: 'CLASSIFY SOURCE',                                        ms: 5100 },
-    { k: 'cls',    t: '→  journal-article  [confidence 0.98]',                  ms: 5550 },
-    { k: 'div',    t: '  ────────────────────────────────────────────',          ms: 5950 },
-    { k: 'lbl',    t: 'FORMAT · APA 7TH',                                       ms: 6150 },
-    { k: 'fmt',    t: '→  3 authors — include all, join with ", &"',            ms: 6600 },
-    { k: 'fmt',    t: '→  DOI prefix → https://doi.org/',                       ms: 7000 },
-    { k: 'fmt',    t: '→  italicise journal title + volume number',             ms: 7400 },
-    { k: 'hit',    t: '✓  reference compiled',                                  ms: 7900 },
+    // ── VALIDATE INPUT ──────────────────────────────────────────
+    { k: 'lbl', t: 'VALIDATE INPUT',                                            ms:  200 },
+    { k: 'hit', t: '✓  protocol        https:// — accepted',                   ms:  620 },
+    { k: 'hit', t: '✓  static hostname — not in private range',                ms:  970 },
+
+    // ── SSRF GUARD ───────────────────────────────────────────────
+    { k: 'div', t: '  ─────────────────────────────────────────────────',       ms: 1360 },
+    { k: 'lbl', t: 'SSRF GUARD',                                                ms: 1560 },
+    { k: 'fld', t: '   dns.lookup     nature.com → resolving…',               ms: 1980 },
+    { k: 'fld', t: '   resolved ip    146.75.52.209',                          ms: 2500 },
+    { k: 'hit', t: '✓  not private    PRIVATE_IPV4_RANGES — no match  [pass]', ms: 2880 },
+
+    // ── FETCH ────────────────────────────────────────────────────
+    { k: 'div', t: '  ─────────────────────────────────────────────────',       ms: 3260 },
+    { k: 'cmd', t: '> GET https://nature.com/articles/s41586-024-07234-x',     ms: 3460 },
+    { k: 'fld', t: '   FETCH_TIMEOUT_MS   8 000 ms',                           ms: 3850 },
+    { k: 'fld', t: '   MAX_BYTES          5 242 880  (5 MB)',                  ms: 4150 },
+    { k: 'ok',  t: '  200 OK  ·  52 KB streamed  ·  1.1s  — within limits',   ms: 4820 },
+    { k: 'hit', t: '✓  content-type     text/html; charset=utf-8  [pass]',    ms: 5260 },
+
+    // ── PARSE METADATA ───────────────────────────────────────────
+    { k: 'div', t: '  ─────────────────────────────────────────────────',       ms: 5650 },
+    { k: 'lbl', t: 'PARSE METADATA',                                            ms: 5850 },
+    { k: 'hit', t: '✓  JSON-LD structured data detected',                      ms: 6300 },
+    { k: 'fld', t: '   title      "On rapid neural processing methods"',       ms: 6780 },
+    { k: 'fld', t: '   authors    Smith, J. A. · Nguyen, T. · Patel, R. K.', ms: 7200 },
+    { k: 'fld', t: '   year       2024',                                       ms: 7580 },
+    { k: 'fld', t: '   journal    Nature',                                     ms: 7870 },
+    { k: 'fld', t: '   vol / iss  627 (8003)  ·  pp. 45–52',                  ms: 8160 },
+    { k: 'fld', t: '   doi        10.1038/s41586-024-07234-x',                ms: 8450 },
+
+    // ── CLASSIFY SOURCE ──────────────────────────────────────────
+    { k: 'div', t: '  ─────────────────────────────────────────────────',       ms: 8880 },
+    { k: 'lbl', t: 'CLASSIFY SOURCE',                                           ms: 9080 },
+    { k: 'cls', t: '   citation_journal_title  detected → journal signal',    ms: 9500 },
+    { k: 'cls', t: '→  journal-article  [confidence 0.98]',                   ms: 9880 },
+
+    // ── FORMAT ───────────────────────────────────────────────────
+    { k: 'div', t: '  ─────────────────────────────────────────────────',       ms: 10260 },
+    { k: 'lbl', t: 'FORMAT · APA 7TH',                                          ms: 10460 },
+    { k: 'fmt', t: '→  3 authors — include all, join with ", &"',             ms: 10880 },
+    { k: 'fmt', t: '→  normalise DOI → https://doi.org/',                     ms: 11260 },
+    { k: 'fmt', t: '→  italicise journal title + volume number',              ms: 11640 },
+    { k: 'hit', t: '✓  reference compiled',                                   ms: 12100 },
   ];
 
   var OUTPUT = 'Smith, J. A., Nguyen, T., & Patel, R. K. (2024). On rapid neural processing methods. Nature, 627(8003), 45–52. https://doi.org/10.1038/s41586-024-07234-x';
