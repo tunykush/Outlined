@@ -1154,6 +1154,9 @@ input, textarea, select { font-family: inherit; }
   border: 1px solid #2e2d2a;
   border-radius: var(--r-16);
   overflow: hidden;
+  height: 440px;
+  display: flex;
+  flex-direction: column;
 }
 
 .pipeline-log-chrome {
@@ -1199,15 +1202,13 @@ input, textarea, select { font-family: inherit; }
   font-family: var(--font-mono);
   font-size: 0.76rem;
   line-height: 1.85;
-  min-height: 340px;
-  max-height: 420px;
-  overflow-y: auto;
-  scrollbar-width: none;
+  flex: 1;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   gap: 0;
 }
-.pipeline-log-body::-webkit-scrollbar { display: none; }
 
 .pipeline-log.is-fading { opacity: 0; transition: opacity 0.4s ease; }
 
@@ -1242,6 +1243,7 @@ input, textarea, select { font-family: inherit; }
 .pipeline-result-wrap {
   position: relative;
   border-radius: calc(var(--r-16) + 3px);
+  height: 440px;
 }
 
 .pipeline-result-wrap::before {
@@ -1287,7 +1289,8 @@ input, textarea, select { font-family: inherit; }
   padding: 28px 28px 22px;
   display: flex;
   flex-direction: column;
-  min-height: 220px;
+  height: 100%;
+  overflow: hidden;
 }
 
 .pipeline-result-label {
