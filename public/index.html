@@ -339,73 +339,155 @@
 
 // Pipeline animation
 (function () {
-  var logEl     = document.getElementById('pipelineLog');
-  var resultEl  = document.getElementById('pipelineResult');
-  var statusEl  = document.getElementById('pipelineStatus');
-  var footerEl  = document.getElementById('pipelineFooter');
-  var wrapEl    = document.getElementById('pipelineResultWrap');
+  var logEl    = document.getElementById('pipelineLog');
+  var resultEl = document.getElementById('pipelineResult');
+  var statusEl = document.getElementById('pipelineStatus');
+  var footerEl = document.getElementById('pipelineFooter');
+  var wrapEl   = document.getElementById('pipelineResultWrap');
   if (!logEl || !resultEl) return;
 
-  var STEPS = [
-    // ── VALIDATE INPUT ──────────────────────────────────────────
-    { k: 'lbl', t: 'VALIDATE INPUT',                                            ms:  200 },
-    { k: 'hit', t: '✓  protocol        https:// — accepted',                   ms:  620 },
-    { k: 'hit', t: '✓  static hostname — not in private range',                ms:  970 },
+  var CYCLES = [
+    // ── APA 7TH ─────────────────────────────────────────────────────
+    {
+      badge: 'APA 7th',
+      output: 'Smith, J. A., Nguyen, T., & Patel, R. K. (2024). On rapid neural processing methods. Nature, 627(8003), 45–52. https://doi.org/10.1038/s41586-024-07234-x',
+      steps: [
+        { k: 'lbl', t: 'VALIDATE INPUT',                                            ms:  200 },
+        { k: 'hit', t: '✓  protocol        https:// — accepted',          ms:  620 },
+        { k: 'hit', t: '✓  static hostname — not in private range',       ms:  970 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 1360 },
+        { k: 'lbl', t: 'SSRF GUARD',                                                ms: 1560 },
+        { k: 'fld', t: '   dns.lookup     nature.com → resolving…',       ms: 1980 },
+        { k: 'fld', t: '   resolved ip    146.75.52.209',                           ms: 2500 },
+        { k: 'hit', t: '✓  not private    PRIVATE_IPV4_RANGES — no match  [pass]', ms: 2880 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 3260 },
+        { k: 'cmd', t: '> GET https://nature.com/articles/s41586-024-07234-x',      ms: 3460 },
+        { k: 'fld', t: '   FETCH_TIMEOUT_MS   8 000 ms',                            ms: 3850 },
+        { k: 'fld', t: '   MAX_BYTES          5 242 880  (5 MB)',                   ms: 4150 },
+        { k: 'ok',  t: '  200 OK  ·  52 KB streamed  ·  1.1s',           ms: 4820 },
+        { k: 'hit', t: '✓  content-type     text/html; charset=utf-8  [pass]', ms: 5260 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 5650 },
+        { k: 'lbl', t: 'PARSE METADATA',                                             ms: 5850 },
+        { k: 'hit', t: '✓  JSON-LD structured data detected',                  ms: 6300 },
+        { k: 'fld', t: '   title      "On rapid neural processing methods"',        ms: 6780 },
+        { k: 'fld', t: '   authors    Smith, J. A. · Nguyen, T. · Patel, R. K.', ms: 7200 },
+        { k: 'fld', t: '   year       2024',                                        ms: 7580 },
+        { k: 'fld', t: '   journal    Nature',                                      ms: 7870 },
+        { k: 'fld', t: '   vol / iss  627 (8003)  ·  pp. 45–52',         ms: 8160 },
+        { k: 'fld', t: '   doi        10.1038/s41586-024-07234-x',                 ms: 8450 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 8880 },
+        { k: 'lbl', t: 'CLASSIFY SOURCE',                                            ms: 9080 },
+        { k: 'cls', t: '   citation_journal_title  detected → journal signal', ms: 9500 },
+        { k: 'cls', t: '→  journal-article  [confidence 0.98]',               ms: 9880 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 10260 },
+        { k: 'lbl', t: 'FORMAT · APA 7TH',                                    ms: 10460 },
+        { k: 'fmt', t: '→  3 authors — include all, join with ", &"',    ms: 10880 },
+        { k: 'fmt', t: '→  normalise DOI → https://doi.org/',            ms: 11260 },
+        { k: 'fmt', t: '→  italicise journal title + volume number',          ms: 11640 },
+        { k: 'hit', t: '✓  reference compiled',                               ms: 12100 },
+      ]
+    },
 
-    // ── SSRF GUARD ───────────────────────────────────────────────
-    { k: 'div', t: '  ─────────────────────────────────────────────────',       ms: 1360 },
-    { k: 'lbl', t: 'SSRF GUARD',                                                ms: 1560 },
-    { k: 'fld', t: '   dns.lookup     nature.com → resolving…',               ms: 1980 },
-    { k: 'fld', t: '   resolved ip    146.75.52.209',                          ms: 2500 },
-    { k: 'hit', t: '✓  not private    PRIVATE_IPV4_RANGES — no match  [pass]', ms: 2880 },
+    // ── RMIT HARVARD ────────────────────────────────────────────────
+    {
+      badge: 'RMIT Harvard',
+      output: "Abdullah A, Yamak S, Korzhenitskaya A, Rahimi R and McClellan J (2023) 'Sustainable development: The role of sustainability committees in achieving ESG targets', Business Strategy and the Environment, 33(3):2250–2268, doi:10.1002/bse.3596.",
+      steps: [
+        { k: 'lbl', t: 'VALIDATE INPUT',                                            ms:  200 },
+        { k: 'hit', t: '✓  protocol        https:// — accepted',          ms:  620 },
+        { k: 'hit', t: '✓  static hostname — not in private range',       ms:  970 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 1360 },
+        { k: 'lbl', t: 'SSRF GUARD',                                                ms: 1560 },
+        { k: 'fld', t: '   dns.lookup     onlinelibrary.wiley.com → resolving…', ms: 1980 },
+        { k: 'fld', t: '   resolved ip    104.18.28.86',                            ms: 2500 },
+        { k: 'hit', t: '✓  not private    PRIVATE_IPV4_RANGES — no match  [pass]', ms: 2880 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 3260 },
+        { k: 'cmd', t: '> GET https://onlinelibrary.wiley.com/doi/10.1002/bse.3596', ms: 3460 },
+        { k: 'fld', t: '   FETCH_TIMEOUT_MS   8 000 ms',                            ms: 3850 },
+        { k: 'fld', t: '   MAX_BYTES          5 242 880  (5 MB)',                   ms: 4150 },
+        { k: 'ok',  t: '  200 OK  ·  84 KB streamed  ·  0.9s',           ms: 4820 },
+        { k: 'hit', t: '✓  content-type     text/html; charset=utf-8  [pass]', ms: 5260 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 5650 },
+        { k: 'lbl', t: 'PARSE METADATA',                                             ms: 5850 },
+        { k: 'hit', t: '✓  citation_* meta tags detected',                     ms: 6300 },
+        { k: 'fld', t: '   title    "Sustainable development: The role of…"', ms: 6780 },
+        { k: 'fld', t: '   authors  Abdullah A · Yamak S · Korzhenitskaya A +2', ms: 7200 },
+        { k: 'fld', t: '   year     2023',                                          ms: 7580 },
+        { k: 'fld', t: '   journal  Business Strategy and the Environment',         ms: 7870 },
+        { k: 'fld', t: '   vol/iss  33(3)  ·  pp. 2250–2268',            ms: 8160 },
+        { k: 'fld', t: '   doi      10.1002/bse.3596',                             ms: 8450 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 8880 },
+        { k: 'lbl', t: 'CLASSIFY SOURCE',                                            ms: 9080 },
+        { k: 'cls', t: '   citation_journal_title  detected → journal signal', ms: 9500 },
+        { k: 'cls', t: '→  journal-article  [confidence 0.98]',               ms: 9880 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 10260 },
+        { k: 'lbl', t: 'FORMAT · RMIT HARVARD',                               ms: 10460 },
+        { k: 'fmt', t: '→  5 authors — list all, join last with "and"',  ms: 10880 },
+        { k: 'fmt', t: '→  year in parens after author list',                 ms: 11260 },
+        { k: 'fmt', t: "→  title in single quotes  ·  doi: prefix",      ms: 11640 },
+        { k: 'hit', t: '✓  reference compiled',                               ms: 12100 },
+      ]
+    },
 
-    // ── FETCH ────────────────────────────────────────────────────
-    { k: 'div', t: '  ─────────────────────────────────────────────────',       ms: 3260 },
-    { k: 'cmd', t: '> GET https://nature.com/articles/s41586-024-07234-x',     ms: 3460 },
-    { k: 'fld', t: '   FETCH_TIMEOUT_MS   8 000 ms',                           ms: 3850 },
-    { k: 'fld', t: '   MAX_BYTES          5 242 880  (5 MB)',                  ms: 4150 },
-    { k: 'ok',  t: '  200 OK  ·  52 KB streamed  ·  1.1s  — within limits',   ms: 4820 },
-    { k: 'hit', t: '✓  content-type     text/html; charset=utf-8  [pass]',    ms: 5260 },
-
-    // ── PARSE METADATA ───────────────────────────────────────────
-    { k: 'div', t: '  ─────────────────────────────────────────────────',       ms: 5650 },
-    { k: 'lbl', t: 'PARSE METADATA',                                            ms: 5850 },
-    { k: 'hit', t: '✓  JSON-LD structured data detected',                      ms: 6300 },
-    { k: 'fld', t: '   title      "On rapid neural processing methods"',       ms: 6780 },
-    { k: 'fld', t: '   authors    Smith, J. A. · Nguyen, T. · Patel, R. K.', ms: 7200 },
-    { k: 'fld', t: '   year       2024',                                       ms: 7580 },
-    { k: 'fld', t: '   journal    Nature',                                     ms: 7870 },
-    { k: 'fld', t: '   vol / iss  627 (8003)  ·  pp. 45–52',                  ms: 8160 },
-    { k: 'fld', t: '   doi        10.1038/s41586-024-07234-x',                ms: 8450 },
-
-    // ── CLASSIFY SOURCE ──────────────────────────────────────────
-    { k: 'div', t: '  ─────────────────────────────────────────────────',       ms: 8880 },
-    { k: 'lbl', t: 'CLASSIFY SOURCE',                                           ms: 9080 },
-    { k: 'cls', t: '   citation_journal_title  detected → journal signal',    ms: 9500 },
-    { k: 'cls', t: '→  journal-article  [confidence 0.98]',                   ms: 9880 },
-
-    // ── FORMAT ───────────────────────────────────────────────────
-    { k: 'div', t: '  ─────────────────────────────────────────────────',       ms: 10260 },
-    { k: 'lbl', t: 'FORMAT · APA 7TH',                                          ms: 10460 },
-    { k: 'fmt', t: '→  3 authors — include all, join with ", &"',             ms: 10880 },
-    { k: 'fmt', t: '→  normalise DOI → https://doi.org/',                     ms: 11260 },
-    { k: 'fmt', t: '→  italicise journal title + volume number',              ms: 11640 },
-    { k: 'hit', t: '✓  reference compiled',                                   ms: 12100 },
+    // ── IEEE ────────────────────────────────────────────────────────
+    {
+      badge: 'IEEE',
+      output: '[1] S. Shao, J. Bi, F. Yang, and W. Guan, "On-line estimation of state-of-charge of Li-ion batteries in electric vehicle using the resampling particle filter," Transp. Res. Part D: Transport Environ., vol. 32, pp. 207-217, Oct. 2014, doi: 10.1016/j.trd.2014.07.013.',
+      steps: [
+        { k: 'lbl', t: 'VALIDATE INPUT',                                            ms:  200 },
+        { k: 'hit', t: '✓  protocol        https:// — accepted',          ms:  620 },
+        { k: 'hit', t: '✓  static hostname — not in private range',       ms:  970 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 1360 },
+        { k: 'lbl', t: 'SSRF GUARD',                                                ms: 1560 },
+        { k: 'fld', t: '   dns.lookup     doi.org → resolving…',         ms: 1980 },
+        { k: 'fld', t: '   resolved ip    104.21.16.201',                           ms: 2500 },
+        { k: 'hit', t: '✓  not private    PRIVATE_IPV4_RANGES — no match  [pass]', ms: 2880 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 3260 },
+        { k: 'lbl', t: 'DOI IDENTIFIER DETECTED',                                   ms: 3460 },
+        { k: 'fld', t: '   parsed doi   10.1016/j.trd.2014.07.013',               ms: 3860 },
+        { k: 'fld', t: '   querying     api.crossref.org/works/…',            ms: 4200 },
+        { k: 'ok',  t: '  200 OK  ·  Crossref — structured record returned', ms: 4870 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 5260 },
+        { k: 'lbl', t: 'PARSE METADATA',                                             ms: 5460 },
+        { k: 'hit', t: '✓  Crossref fields merged into extraction result',     ms: 5900 },
+        { k: 'fld', t: '   title    "On-line estimation of state-of-charge…"', ms: 6380 },
+        { k: 'fld', t: '   authors  Shao S. · Bi J. · Yang F. · Guan W.', ms: 6800 },
+        { k: 'fld', t: '   year     2014  ·  month  October',                 ms: 7200 },
+        { k: 'fld', t: '   journal  Transp. Res. Part D: Transport Environ.',      ms: 7490 },
+        { k: 'fld', t: '   volume   32  ·  pp. 207–217',                 ms: 7780 },
+        { k: 'fld', t: '   doi      10.1016/j.trd.2014.07.013',                   ms: 8070 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 8500 },
+        { k: 'lbl', t: 'CLASSIFY SOURCE',                                            ms: 8700 },
+        { k: 'cls', t: '   citation_doi  detected → journal signal',          ms: 9120 },
+        { k: 'cls', t: '→  journal-article  [confidence 0.99]',               ms: 9500 },
+        { k: 'div', t: '  ─────────────────────────────────────────', ms: 9880 },
+        { k: 'lbl', t: 'FORMAT · IEEE',                                        ms: 10080 },
+        { k: 'fmt', t: '→  4 authors — list all, join last with "and"',  ms: 10500 },
+        { k: 'fmt', t: '→  numeric marker [1]  ·  title in double quotes', ms: 10880 },
+        { k: 'fmt', t: '→  vol. / pp. / abbreviated month  Oct.',             ms: 11260 },
+        { k: 'hit', t: '✓  reference compiled',                               ms: 11720 },
+      ]
+    }
   ];
 
-  var OUTPUT = 'Smith, J. A., Nguyen, T., & Patel, R. K. (2024). On rapid neural processing methods. Nature, 627(8003), 45–52. https://doi.org/10.1038/s41586-024-07234-x';
+  var cycleIdx = 0;
 
   function addLine(kind, text) {
     var el = document.createElement('div');
     el.className = 'pline pline--' + kind;
     el.textContent = text;
     logEl.appendChild(el);
-    logEl.scrollTop = logEl.scrollHeight;
   }
 
   function setStatus(text, cls) {
     statusEl.textContent = text;
     statusEl.className = 'pipeline-chrome-status' + (cls ? ' ' + cls : '');
+  }
+
+  function setActiveBadge(label) {
+    footerEl.querySelectorAll('.pipeline-badge').forEach(function (b) {
+      b.classList.toggle('pipeline-badge--active', b.textContent.trim() === label);
+    });
   }
 
   function typeOutput(text, done) {
@@ -445,16 +527,20 @@
   }
 
   function run() {
-    setStatus('running', 'is-running');
+    var cycle = CYCLES[cycleIdx];
+    cycleIdx = (cycleIdx + 1) % CYCLES.length;
 
-    STEPS.forEach(function (s) {
+    setStatus('running', 'is-running');
+    setActiveBadge(cycle.badge);
+
+    cycle.steps.forEach(function (s) {
       setTimeout(function () { addLine(s.k, s.t); }, s.ms);
     });
 
-    var outputAt = STEPS[STEPS.length - 1].ms + 700;
+    var outputAt = cycle.steps[cycle.steps.length - 1].ms + 700;
     setTimeout(function () {
       setStatus('done', 'is-done');
-      typeOutput(OUTPUT, function () { reset(run); });
+      typeOutput(cycle.output, function () { reset(run); });
     }, outputAt);
   }
 
