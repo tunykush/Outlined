@@ -1326,17 +1326,19 @@ input, textarea, select { font-family: inherit; }
   content: '';
   position: absolute;
   top: 0;
-  left: -40%;
+  left: 0;
   width: 40%;
   height: 100%;
   background: linear-gradient(90deg, transparent, var(--terracotta), var(--coral), var(--terracotta), transparent);
   border-radius: 1px;
   animation: demo-loading 1.6s ease-in-out infinite;
+  transform: translateX(-100%);
+  will-change: transform;
 }
 
 @keyframes demo-loading {
-  0%   { left: -40%; }
-  100% { left: 140%; }
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
 }
 
 .demo-field {
