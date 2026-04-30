@@ -1135,6 +1135,195 @@ input, textarea, select { font-family: inherit; }
   margin: 0;
 }
 
+/* ====================== PIPELINE ANIMATION ====================== */
+.pipeline-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 40px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .pipeline-wrap { grid-template-columns: 1fr; }
+}
+
+/* --- Terminal log panel --- */
+.pipeline-log {
+  background: #1a1917;
+  border: 1px solid #2e2d2a;
+  border-radius: var(--r-16);
+  overflow: hidden;
+}
+
+.pipeline-log-chrome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 16px;
+  background: #141413;
+  border-bottom: 1px solid #2e2d2a;
+}
+
+.pipeline-chrome-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pipeline-chrome-dot--r { background: #ff5f57; }
+.pipeline-chrome-dot--y { background: #febc2e; }
+.pipeline-chrome-dot--g { background: #28c840; }
+
+.pipeline-chrome-title {
+  margin-left: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #4a4845;
+  letter-spacing: 0.06em;
+  flex: 1;
+}
+
+.pipeline-chrome-status {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: #4a4845;
+  transition: color 0.3s;
+}
+.pipeline-chrome-status.is-running { color: #febc2e; }
+.pipeline-chrome-status.is-done    { color: #28c840; }
+
+.pipeline-log-body {
+  padding: 16px 18px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.85;
+  min-height: 340px;
+  max-height: 420px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.pipeline-log-body::-webkit-scrollbar { display: none; }
+
+.pipeline-log.is-fading { opacity: 0; transition: opacity 0.4s ease; }
+
+/* Log line types */
+.pline {
+  opacity: 0;
+  transform: translateY(3px);
+  animation: pline-in 0.22s ease forwards;
+  white-space: pre;
+}
+
+@keyframes pline-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pline--cmd  { color: #d4cfc5; }
+.pline--ok   { color: #5a9e5a; }
+.pline--div  { color: #2e2d2a; letter-spacing: -0.02em; }
+.pline--lbl  { color: var(--coral); font-weight: 600; letter-spacing: 0.08em; margin-top: 4px; }
+.pline--hit  { color: #5a9e5a; }
+.pline--fld  { color: #7a7870; }
+.pline--cls  { color: #c9a84c; }
+.pline--fmt  { color: #6b94b8; }
+
+/* --- Output card --- */
+.pipeline-result {
+  background: #1e1d1a;
+  border: 1px solid #2e2d2a;
+  border-radius: var(--r-16);
+  padding: 28px 28px 22px;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+}
+
+.pipeline-result-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #4a4845;
+  margin: 0 0 16px;
+}
+
+.pipeline-result-text {
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: #d4cfc5;
+  flex: 1;
+  min-height: 120px;
+  transition: color 0.3s;
+}
+
+.pipeline-result-text.is-done { color: #ede9e0; }
+
+.pipeline-result-idle {
+  color: #3a3936;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.pipeline-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--coral);
+  vertical-align: text-bottom;
+  margin-left: 1px;
+  animation: cursor-blink 0.9s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.pipeline-result-footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #2a2927;
+  flex-wrap: wrap;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.pipeline-result-footer.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pipeline-badge {
+  padding: 3px 12px;
+  border-radius: var(--r-32);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  border: 1px solid #2e2d2a;
+  color: #5a5854;
+}
+
+.pipeline-badge--active {
+  background: #c96442;
+  color: #fff;
+  border-color: #c96442;
+}
+
+/* Dark mode — section stays intentionally dark in both modes */
+[data-theme="dark"] .pipeline-log { border-color: #252320; }
+[data-theme="dark"] .pipeline-log-chrome { background: #111110; }
+[data-theme="dark"] .pipeline-result { background: #181715; border-color: #252320; }
+
 /* ====================== ABOUT ====================== */
 .about-section {
   padding: 56px 16px;

@@ -189,27 +189,33 @@
 <section id="how" class="how-section">
   <div class="container">
     <h2 class="section-title">How a URL becomes a citation</h2>
-    <div class="how-grid">
-      <div class="how-step">
-        <span class="step-num">01</span>
-        <h3 class="step-title">Read the page</h3>
-        <p class="step-text">Backend safely fetches the HTML — with SSRF protection, 8s timeout, 5MB cap.</p>
+    <div class="pipeline-wrap">
+
+      <!-- Terminal log -->
+      <div class="pipeline-log">
+        <div class="pipeline-log-chrome">
+          <span class="pipeline-chrome-dot pipeline-chrome-dot--r"></span>
+          <span class="pipeline-chrome-dot pipeline-chrome-dot--y"></span>
+          <span class="pipeline-chrome-dot pipeline-chrome-dot--g"></span>
+          <span class="pipeline-chrome-title">outlined · engine</span>
+          <span class="pipeline-chrome-status" id="pipelineStatus"></span>
+        </div>
+        <div class="pipeline-log-body" id="pipelineLog"></div>
       </div>
-      <div class="how-step">
-        <span class="step-num">02</span>
-        <h3 class="step-title">Parse metadata</h3>
-        <p class="step-text">JSON-LD, citation_* tags, Open Graph, Dublin Core, Twitter Cards — in priority order.</p>
+
+      <!-- Output card -->
+      <div class="pipeline-result">
+        <p class="pipeline-result-label">Reference list entry</p>
+        <div class="pipeline-result-text" id="pipelineResult">
+          <span class="pipeline-result-idle">Awaiting output…</span>
+        </div>
+        <div class="pipeline-result-footer" id="pipelineFooter">
+          <span class="pipeline-badge pipeline-badge--active">APA 7th</span>
+          <span class="pipeline-badge">RMIT Harvard</span>
+          <span class="pipeline-badge">IEEE</span>
+        </div>
       </div>
-      <div class="how-step">
-        <span class="step-num">03</span>
-        <h3 class="step-title">Guess the source</h3>
-        <p class="step-text">Journal? News article? Blog? The system picks a default, you confirm.</p>
-      </div>
-      <div class="how-step">
-        <span class="step-num">04</span>
-        <h3 class="step-title">Apply the rules</h3>
-        <p class="step-text">RMIT Easy Cite rules — encoded line by line — produce the formatted reference.</p>
-      </div>
+
     </div>
   </div>
 </section>
@@ -327,6 +333,103 @@
       link.addEventListener('click', closeMenu);
     });
   }
+})();
+
+// Pipeline animation
+(function () {
+  var logEl     = document.getElementById('pipelineLog');
+  var resultEl  = document.getElementById('pipelineResult');
+  var statusEl  = document.getElementById('pipelineStatus');
+  var footerEl  = document.getElementById('pipelineFooter');
+  if (!logEl || !resultEl) return;
+
+  var STEPS = [
+    { k: 'cmd',    t: '> GET https://nature.com/articles/s41586-024-07234-x',  ms: 300  },
+    { k: 'ok',     t: '  200 OK · 52 KB · 1.1s',                               ms: 1050 },
+    { k: 'div',    t: '  ────────────────────────────────────────────',          ms: 1500 },
+    { k: 'lbl',    t: 'PARSE METADATA',                                         ms: 1700 },
+    { k: 'hit',    t: '✓  JSON-LD structured data detected',                    ms: 2200 },
+    { k: 'fld',    t: '   title      "On rapid neural processing methods"',     ms: 2700 },
+    { k: 'fld',    t: '   authors    Smith, J. A. · Nguyen, T. · Patel, R. K.',ms: 3150 },
+    { k: 'fld',    t: '   year       2024',                                     ms: 3550 },
+    { k: 'fld',    t: '   journal    Nature',                                   ms: 3850 },
+    { k: 'fld',    t: '   vol / iss  627 (8003) · pp. 45–52',                  ms: 4150 },
+    { k: 'fld',    t: '   doi        10.1038/s41586-024-07234-x',               ms: 4450 },
+    { k: 'div',    t: '  ────────────────────────────────────────────',          ms: 4900 },
+    { k: 'lbl',    t: 'CLASSIFY SOURCE',                                        ms: 5100 },
+    { k: 'cls',    t: '→  journal-article  [confidence 0.98]',                  ms: 5550 },
+    { k: 'div',    t: '  ────────────────────────────────────────────',          ms: 5950 },
+    { k: 'lbl',    t: 'FORMAT · APA 7TH',                                       ms: 6150 },
+    { k: 'fmt',    t: '→  3 authors — include all, join with ", &"',            ms: 6600 },
+    { k: 'fmt',    t: '→  DOI prefix → https://doi.org/',                       ms: 7000 },
+    { k: 'fmt',    t: '→  italicise journal title + volume number',             ms: 7400 },
+    { k: 'hit',    t: '✓  reference compiled',                                  ms: 7900 },
+  ];
+
+  var OUTPUT = 'Smith, J. A., Nguyen, T., & Patel, R. K. (2024). On rapid neural processing methods. Nature, 627(8003), 45–52. https://doi.org/10.1038/s41586-024-07234-x';
+
+  function addLine(kind, text) {
+    var el = document.createElement('div');
+    el.className = 'pline pline--' + kind;
+    el.textContent = text;
+    logEl.appendChild(el);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function setStatus(text, cls) {
+    statusEl.textContent = text;
+    statusEl.className = 'pipeline-chrome-status' + (cls ? ' ' + cls : '');
+  }
+
+  function typeOutput(text, done) {
+    resultEl.innerHTML = '';
+    var cur = document.createElement('span');
+    cur.className = 'pipeline-cursor';
+    resultEl.appendChild(cur);
+    var i = 0;
+    function tick() {
+      if (i < text.length) {
+        resultEl.insertBefore(document.createTextNode(text[i]), cur);
+        i++;
+        setTimeout(tick, 16 + (Math.random() * 10 | 0));
+      } else {
+        cur.remove();
+        resultEl.classList.add('is-done');
+        footerEl.classList.add('is-visible');
+        if (done) setTimeout(done, 3800);
+      }
+    }
+    setTimeout(tick, 80);
+  }
+
+  function reset(cb) {
+    logEl.classList.add('is-fading');
+    resultEl.classList.remove('is-done');
+    footerEl.classList.remove('is-visible');
+    setStatus('');
+    setTimeout(function () {
+      logEl.innerHTML = '';
+      logEl.classList.remove('is-fading');
+      resultEl.innerHTML = '<span class="pipeline-result-idle">Awaiting output…</span>';
+      if (cb) cb();
+    }, 500);
+  }
+
+  function run() {
+    setStatus('running', 'is-running');
+
+    STEPS.forEach(function (s) {
+      setTimeout(function () { addLine(s.k, s.t); }, s.ms);
+    });
+
+    var outputAt = STEPS[STEPS.length - 1].ms + 700;
+    setTimeout(function () {
+      setStatus('done', 'is-done');
+      typeOutput(OUTPUT, function () { reset(run); });
+    }, outputAt);
+  }
+
+  reset(run);
 })();
 </script>
 </body>
