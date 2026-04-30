@@ -1232,8 +1232,55 @@ input, textarea, select { font-family: inherit; }
 .pline--cls  { color: #c9a84c; }
 .pline--fmt  { color: #6b94b8; }
 
+/* --- Ring wrapper --- */
+@property --ring-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.pipeline-result-wrap {
+  position: relative;
+  border-radius: calc(var(--r-16) + 3px);
+}
+
+.pipeline-result-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: calc(var(--r-16) + 3px);
+  background: conic-gradient(
+    from var(--ring-angle),
+    transparent 0%,
+    transparent 48%,
+    rgba(201, 100, 66, 0.25) 58%,
+    #c96442 68%,
+    #e8845a 76%,
+    #ffa07a 80%,
+    #e8845a 84%,
+    #c96442 90%,
+    rgba(201, 100, 66, 0.15) 96%,
+    transparent 100%
+  );
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+  animation: ring-sweep 2.8s linear infinite;
+  pointer-events: none;
+}
+
+.pipeline-result-wrap.has-ring::before {
+  opacity: 1;
+}
+
+@keyframes ring-sweep {
+  to { --ring-angle: 360deg; }
+}
+
 /* --- Output card --- */
 .pipeline-result {
+  position: relative;
+  z-index: 1;
   background: #1e1d1a;
   border: 1px solid #2e2d2a;
   border-radius: var(--r-16);

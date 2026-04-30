@@ -204,15 +204,17 @@
       </div>
 
       <!-- Output card -->
-      <div class="pipeline-result">
-        <p class="pipeline-result-label">Reference list entry</p>
-        <div class="pipeline-result-text" id="pipelineResult">
-          <span class="pipeline-result-idle">Awaiting output…</span>
-        </div>
-        <div class="pipeline-result-footer" id="pipelineFooter">
-          <span class="pipeline-badge pipeline-badge--active">APA 7th</span>
-          <span class="pipeline-badge">RMIT Harvard</span>
-          <span class="pipeline-badge">IEEE</span>
+      <div class="pipeline-result-wrap" id="pipelineResultWrap">
+        <div class="pipeline-result">
+          <p class="pipeline-result-label">Reference list entry</p>
+          <div class="pipeline-result-text" id="pipelineResult">
+            <span class="pipeline-result-idle">Awaiting output…</span>
+          </div>
+          <div class="pipeline-result-footer" id="pipelineFooter">
+            <span class="pipeline-badge pipeline-badge--active">APA 7th</span>
+            <span class="pipeline-badge">RMIT Harvard</span>
+            <span class="pipeline-badge">IEEE</span>
+          </div>
         </div>
       </div>
 
@@ -341,6 +343,7 @@
   var resultEl  = document.getElementById('pipelineResult');
   var statusEl  = document.getElementById('pipelineStatus');
   var footerEl  = document.getElementById('pipelineFooter');
+  var wrapEl    = document.getElementById('pipelineResultWrap');
   if (!logEl || !resultEl) return;
 
   var STEPS = [
@@ -383,6 +386,7 @@
 
   function typeOutput(text, done) {
     resultEl.innerHTML = '';
+    if (wrapEl) wrapEl.classList.add('has-ring');
     var cur = document.createElement('span');
     cur.className = 'pipeline-cursor';
     resultEl.appendChild(cur);
@@ -406,6 +410,7 @@
     logEl.classList.add('is-fading');
     resultEl.classList.remove('is-done');
     footerEl.classList.remove('is-visible');
+    if (wrapEl) wrapEl.classList.remove('has-ring');
     setStatus('');
     setTimeout(function () {
       logEl.innerHTML = '';
