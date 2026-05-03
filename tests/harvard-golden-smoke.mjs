@@ -44,7 +44,7 @@ const fixtures = [
     expected: 'Bermudez et al. (2020) Trust and Transparency in Times of Crisis, PRSA website, accessed 19 April 2026. https://www.prsa.org/article/trust-and-transparency-in-times-of-crisis',
   },
   {
-    name: 'Forbes webpage with full publication date',
+    name: 'Forbes webpage uses year-only date even when day-month-year present',
     source: 'webpage',
     data: {
       ...base,
@@ -54,7 +54,7 @@ const fixtures = [
       siteName: 'Forbes', publisher: 'Forbes', accessDate: '19 April 2026',
       url: 'https://www.forbes.com/sites/forbesbooksauthors/2024/02/12/transparency-the-only-sustainable-way-forward',
     },
-    expected: 'Ferreira (12 February 2024) Transparency: The Only Sustainable Way Forward, Forbes website, accessed 19 April 2026. https://www.forbes.com/sites/forbesbooksauthors/2024/02/12/transparency-the-only-sustainable-way-forward',
+    expected: 'Ferreira (2024) Transparency: The Only Sustainable Way Forward, Forbes website, accessed 19 April 2026. https://www.forbes.com/sites/forbesbooksauthors/2024/02/12/transparency-the-only-sustainable-way-forward',
   },
   {
     name: 'Webpage with n.d. from uploaded reference list',

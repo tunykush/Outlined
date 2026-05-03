@@ -218,8 +218,30 @@ function edn(edition: string): string {
   return `${e} edn`;
 }
 
+function domainPrefixUpper(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    const first = host.split('.')[0] || '';
+    return first.toUpperCase();
+  } catch {
+    return '';
+  }
+}
+
+function hasNonAscii(s: string): boolean {
+  return /[^\x00-\x7F]/.test(s);
+}
+
 function websiteName(d: CitationData): string {
-  const raw = clean(d.siteName || d.publisher || d.platform);
+  let raw = clean(d.siteName || d.publisher || d.platform);
+  // Vietnamese (or other non-ASCII) site names render poorly in Harvard output and
+  // typically have a well-known shorthand matching the domain prefix
+  // (e.g. "Báo Công an Nhân dân" → cand.com.vn → "CAND"). Prefer the upper-cased
+  // domain prefix in that case.
+  if (raw && hasNonAscii(raw)) {
+    const fallback = domainPrefixUpper(d.url);
+    if (fallback) raw = fallback;
+  }
   if (!raw) return '';
   // RMIT Harvard examples sometimes use the domain itself as the website name.
   if (/\.[a-z]{2,}(?:\.[a-z]{2,})?$/i.test(raw)) {
@@ -338,14 +360,17 @@ function harvardWebpageLike(d: CitationData, titleAlwaysItalic = false): string 
   const hasPersonal = validPeople(d.authors).length > 0;
   const orgName = !hasPersonal ? clean(d.siteName || d.publisher || '') : '';
 
+  // Webpage references in RMIT Harvard use year-only, not the full publication date.
+  const date = dateYear(d);
+
   let lead: string;
   let titleInLead = false;
   if (hasPersonal) {
-    lead = `${esc(referenceAuthorsHarvard(d))} ${dateFull(d)} `;
+    lead = `${esc(referenceAuthorsHarvard(d))} ${date} `;
   } else if (orgName) {
-    lead = `${esc(orgName)} ${dateFull(d)} `;
+    lead = `${esc(orgName)} ${date} `;
   } else {
-    lead = `${titleHtml} ${dateFull(d)} `;
+    lead = `${titleHtml} ${date} `;
     titleInLead = true;
   }
 

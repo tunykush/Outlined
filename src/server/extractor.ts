@@ -397,6 +397,8 @@ function shouldIgnoreAuthor(raw: string): boolean {
   if (/^(in|from|at)\s+/i.test(s)) return true;
   if (/^(wiki|fandom|admin|administrator|staff|editorial team)$/i.test(s)) return true;
   if (/^by\s*$/i.test(s)) return true;
+  // Reject anything that looks like a bare domain (e.g. "cand.com.vn", "vnexpress.net").
+  if (/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\.[a-z]{2,})?$/i.test(s)) return true;
   return false;
 }
 
@@ -408,6 +410,10 @@ function cleanBylineName(raw: string): string {
     // Vietnamese academic titles: PGS (Associate Prof), GS (Prof), TS (PhD),
     // ThS (Master), NCS (PhD candidate), NSND/NSƯT (People's/Excellent Artist)
     .replace(/\b(PGS|GS|TS|ThS|NCS|NSND|NSƯT)\.?\s*/gi, '')
+    // Strip Vietnamese byline parentheticals: "(thực hiện)", "(theo)", "(tổng hợp)",
+    // "(biên dịch)", "(ghi)", "(dịch)", "(bài, ảnh)" etc — these are role markers,
+    // not part of the author name.
+    .replace(/\s*\((?:thực hiện|theo|tổng hợp|biên dịch|ghi|dịch|bài|ảnh|bài,?\s*ảnh)\)\s*/gi, ' ')
     .replace(/\s*,\s*(?:in|from|at)\s+[^,;|]+(?:,\s*[^,;|]+)?/gi, '')
     .replace(/\s*,\s*(and\b)/gi, ' $1')
     .replace(/\s*,\s*$/g, '')

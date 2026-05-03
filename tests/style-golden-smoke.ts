@@ -44,7 +44,7 @@ const fixtures: Fixture[] = [
       siteName: 'Forbes', publisher: 'Forbes', accessDate: '19 April 2026',
       url: 'https://www.forbes.com/sites/forbesbooksauthors/2024/02/12/transparency-the-only-sustainable-way-forward',
     },
-    expected: 'Ferreira (12 February 2024) Transparency: The Only Sustainable Way Forward, Forbes website, accessed 19 April 2026. https://www.forbes.com/sites/forbesbooksauthors/2024/02/12/transparency-the-only-sustainable-way-forward',
+    expected: 'Ferreira (2024) Transparency: The Only Sustainable Way Forward, Forbes website, accessed 19 April 2026. https://www.forbes.com/sites/forbesbooksauthors/2024/02/12/transparency-the-only-sustainable-way-forward',
   },
   {
     name: 'RMIT Harvard webpage with n.d. from uploaded reference list',
