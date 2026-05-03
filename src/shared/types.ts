@@ -128,6 +128,8 @@ export interface ExtractResult {
   ok: boolean;
   data?: Partial<CitationData>;
   guessedType?: SourceType;
+  /** True when CrossRef/OpenAlex enriched the result after finding a DOI in the HTML. */
+  doiEnriched?: boolean;
   code?: string;
   message?: string;
 }

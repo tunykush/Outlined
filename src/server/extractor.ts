@@ -123,9 +123,31 @@ function parseJsonLd($: CheerioAPI): {
   return result;
 }
 
+/**
+ * Vietnamese-specific diacritics not found in European languages.
+ * Presence → the name follows Vietnamese word order (family name FIRST).
+ */
+const VI_DIACRITIC_RE =
+  /[ắằẳẵặấầẩẫậẻẽẹềếểễệịỉĩọỏồốổỗộờớởỡợụủũừứửữựỳỷỹỵđ]/i;
+
+/**
+ * Normalize an ALL-CAPS string to Title Case.
+ * Only applied when every letter is uppercase (common in Vietnamese articles).
+ */
+function maybeNormalizeCaps(s: string): string {
+  // Normalize to NFC first so Vietnamese combining sequences become precomposed code points.
+  const n = s.normalize('NFC');
+  const letters = n.replace(/[^a-zA-ZÀ-ɏḀ-ỿ]/g, '');
+  if (!letters || letters !== letters.toUpperCase()) return n;
+  return n
+    .toLowerCase()
+    .replace(/(^|\s)(\S)/g, (_, space, c) => space + c.toUpperCase());
+}
+
 /** Split a "First Last" or "Last, First" name string into Author */
 function splitName(raw: string): Author {
-  const s = raw.trim().replace(/\s+/g, ' ');
+  // Normalize input to NFC so VI_DIACRITIC_RE reliably matches precomposed Vietnamese chars.
+  const s = maybeNormalizeCaps(raw.trim().normalize('NFC').replace(/\s+/g, ' '));
   if (!s) return { family: '', given: '' };
   if (s.includes(',')) {
     const [fam, giv] = s.split(',', 2).map((x) => x.trim());
@@ -138,8 +160,15 @@ function splitName(raw: string): Author {
 
   const parts = s.split(' ');
   if (parts.length === 1) return { family: parts[0], given: '' };
+
+  // Vietnamese names: family name is the FIRST word.
+  // Detected by the presence of Vietnamese-specific diacritics.
+  if (VI_DIACRITIC_RE.test(s)) {
+    return { family: parts[0].normalize('NFC'), given: parts.slice(1).join(' ').normalize('NFC') };
+  }
+
   const family = parts.pop()!;
-  return { family, given: parts.join(' ') };
+  return { family: family.normalize('NFC'), given: parts.join(' ').normalize('NFC') };
 }
 
 /** Resolve a possibly-relative URL to absolute */
@@ -254,6 +283,9 @@ function visibleDateText($: CheerioAPI): string {
     /(?:Cập\s*nhật\s*lần\s*cuối|Cập\s*nhật|Ngày\s*đăng|Đăng\s*ngày|Xuất\s*bản|Published|Updated|Last\s*updated)\s*:?\s*((?:19|20)\d{2}[\/-]\d{1,2}[\/-]\d{1,2})/i,
     /(?:Published|Updated|Last\s*updated|Date)\s*:?\s*([A-Z][a-z]+\s+\d{1,2},?\s+(?:19|20)\d{2})/i,
     /(?:Published|Updated|Last\s*updated|Date)\s*:?\s*(\d{1,2}\s+[A-Z][a-z]+\s+(?:19|20)\d{2})/i,
+    // Vietnamese publication source line: "Nguồn: Tạp chí VHNT số 554, tháng 12-2023"
+    // Require a publication-context prefix so historical mentions of "tháng X-YYYY" are not matched.
+    /(?:Nguồn|Tạp\s*chí|số\s+\d+)[^,\n]{0,60},\s*tháng\s+(\d{1,2}[-/](?:19|20)\d{2})/i,
   ];
   for (const re of patterns) {
     const m = text.match(re);
@@ -373,6 +405,9 @@ function cleanBylineName(raw: string): string {
     .replace(/\bby\b\s*/i, '')
     .replace(/\b(written|posted|published)\s+by\b\s*/i, '')
     .replace(/\b(APR|PhD|Ph\.D\.?|MBA|MA|MSc|Dr\.?|Prof\.?|Professor)\b\.?/gi, '')
+    // Vietnamese academic titles: PGS (Associate Prof), GS (Prof), TS (PhD),
+    // ThS (Master), NCS (PhD candidate), NSND/NSƯT (People's/Excellent Artist)
+    .replace(/\b(PGS|GS|TS|ThS|NCS|NSND|NSƯT)\.?\s*/gi, '')
     .replace(/\s*,\s*(?:in|from|at)\s+[^,;|]+(?:,\s*[^,;|]+)?/gi, '')
     .replace(/\s*,\s*(and\b)/gi, ' $1')
     .replace(/\s*,\s*$/g, '')
@@ -430,6 +465,39 @@ function extractVisibleBylineAuthors($: CheerioAPI): Author[] {
     if (out.length) break;
   }
   return out;
+}
+
+/**
+ * Detect Vietnamese-style author signatures placed at the END of an article,
+ * e.g. "PGS, TS TRẦN YÊN CHI" or "ThS. Nguyễn Văn A".
+ *
+ * Vietnamese academic sites rarely include author meta tags; the author is
+ * typically a short standalone block at the bottom of the article body.
+ * We scan for short elements (< 80 chars) that begin with a known Vietnamese
+ * academic title prefix and contain no nested block children.
+ */
+function extractVietnameseSignatureAuthor($: CheerioAPI): Author[] {
+  // Prefix pattern: one or more Vietnamese academic titles (with optional dots/commas)
+  const viPrefix = /^\s*(?:(?:PGS|GS|TS|ThS|NCS|NSND|NSƯT)\.?\s*,?\s*)+/i;
+
+  const candidates: Author[] = [];
+
+  $('p, div, span, strong, b, em, td').each((_, el) => {
+    // Skip containers that have nested block elements
+    if ($(el).children('p, div, article, section, ul, ol').length > 0) return;
+
+    const t = $(el).text().replace(/\s+/g, ' ').trim();
+    if (t.length < 4 || t.length > 80) return;
+    if (!viPrefix.test(t)) return;
+
+    const nameRaw = t.replace(viPrefix, '').trim();
+    if (!nameRaw || nameRaw.length < 2) return;
+    if (shouldIgnoreAuthor(nameRaw)) return;
+
+    candidates.push(splitName(nameRaw));
+  });
+
+  return candidates.slice(0, 1);
 }
 
 function inferSiteNameFromTitle(rawTitle: string): string {
@@ -539,6 +607,13 @@ async function extractAuthors(
     out.push(...extractVisibleBylineAuthors($));
   }
 
+  // 6b. Vietnamese article signature — "PGS, TS TRẦN YÊN CHI" at bottom of article.
+  //     Vietnamese academic/culture sites put the author at the END of the article
+  //     body as a standalone short block. Meta tags and byline CSS are absent.
+  if (out.length === 0) {
+    out.push(...extractVietnameseSignatureAuthor($));
+  }
+
   // 7. compromise NER — last resort when all heuristics fail.
   //    Recognises PERSON and ORGANIZATION entities from free-form byline text.
   //    e.g. "Sarah Johnson covers tech for Bloomberg" → Author: Sarah Johnson
@@ -576,6 +651,13 @@ function splitDate(raw: string): { year: string; month: string; day: string } {
         /* fall through */
       }
     }
+  }
+
+  // Vietnamese tháng pattern captures "12-2023" or "12/2023" (month-year only, no day)
+  const mY = raw.trim().match(/^(\d{1,2})[-/]((?:19|20)\d{2})$/);
+  if (mY) {
+    const m = Number(mY[1]);
+    if (m >= 1 && m <= 12) return { day: '', month: months[m - 1], year: mY[2] };
   }
 
   const numeric = raw.trim().match(/^(\d{1,4})[\/-](\d{1,2})[\/-](\d{1,4})/);

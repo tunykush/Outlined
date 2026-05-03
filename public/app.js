@@ -227,7 +227,9 @@
   var state = {
     style: "apa7",
     source: "webpage",
-    data: emptyData()
+    data: emptyData(),
+    detectedSource: null,
+    doiEnriched: false
   };
   function $(id) {
     const el2 = document.getElementById(id);
@@ -288,20 +290,33 @@
     const tabs = $("sourceTabs");
     tabs.innerHTML = "";
     Object.keys(SOURCE_TYPE_LABELS).forEach((t) => {
-      const btn = el(
-        "button",
-        {
-          class: "source-tab" + (state.source === t ? " source-tab--active" : ""),
-          type: "button",
-          onclick: () => {
-            state.source = t;
-            renderSourceTabs();
-            renderForm();
-            regenerate();
-          }
-        },
-        SOURCE_TYPE_LABELS[t]
-      );
+      const isActive = state.source === t;
+      const isDetected = state.detectedSource === t;
+      const classes = ["source-tab"];
+      if (isActive)
+        classes.push("source-tab--active");
+      if (isDetected)
+        classes.push("source-tab--detected");
+      const attrs = {
+        class: classes.join(" "),
+        type: "button",
+        onclick: () => {
+          state.source = t;
+          renderSourceTabs();
+          renderForm();
+          regenerate();
+        }
+      };
+      if (isDetected) {
+        attrs.title = state.doiEnriched ? "Auto-detected from URL \u2014 verified via CrossRef" : "Auto-detected from URL";
+      }
+      const children = [];
+      if (isDetected) {
+        const dotClass = "source-tab__dot" + (state.doiEnriched ? " source-tab__dot--verified" : "");
+        children.push(el("span", { class: dotClass, "aria-hidden": "true" }));
+      }
+      children.push(SOURCE_TYPE_LABELS[t]);
+      const btn = el("button", attrs, ...children);
       tabs.appendChild(btn);
     });
   }
@@ -502,6 +517,8 @@
       }
       if (result.guessedType) {
         state.source = result.guessedType;
+        state.detectedSource = result.guessedType;
+        state.doiEnriched = Boolean(result.doiEnriched);
         renderSourceTabs();
       }
       renderForm();
@@ -520,8 +537,9 @@
         filledFields.push("journal");
       if (result.data.doi)
         filledFields.push("DOI");
+      const enrichedNote = result.doiEnriched ? " \u2014 enriched from CrossRef" : "";
       setStatus(
-        `\u2713 Tr\xEDch xu\u1EA5t th\xE0nh c\xF4ng: <strong>${filledFields.join(", ") || "partial \u2014 vui l\xF2ng ki\u1EC3m tra"}</strong>. Auto-detected source: <strong>${SOURCE_TYPE_LABELS[result.guessedType || "webpage"]}</strong>.`,
+        `\u2713 Tr\xEDch xu\u1EA5t th\xE0nh c\xF4ng: <strong>${filledFields.join(", ") || "partial \u2014 vui l\xF2ng ki\u1EC3m tra"}</strong>${enrichedNote}.`,
         "success"
       );
     } catch (e) {
@@ -578,8 +596,11 @@
     });
     $("clearBtn").addEventListener("click", () => {
       state.data = emptyData();
+      state.detectedSource = null;
+      state.doiEnriched = false;
       $("urlInput").value = "";
       clearStatus();
+      renderSourceTabs();
       renderForm();
       void regenerate();
     });

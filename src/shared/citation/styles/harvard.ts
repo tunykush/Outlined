@@ -6,6 +6,15 @@
 
 import type { Author, CitationData, CitationOutput, SourceType } from '../../types.js';
 
+const VI_NAME_RE = /[ắằẳẵặấầẩẫậẻẽẹềếểễệịỉĩọỏồốổỗộờớởỡợụủũừứửữựỳỷỹỵđ]/i;
+
+/** Strip Vietnamese (and other) diacritics → plain ASCII for citation output. */
+// eslint-disable-next-line no-misleading-character-class
+const COMBINING_RE = /[̀-ͯ]/g;
+function asciiName(s: string): string {
+  return s.normalize('NFD').replace(COMBINING_RE, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+}
+
 const esc = (s: string = ''): string =>
   String(s).replace(/[<>&"']/g, (c) => ({
     '<': '&lt;',
@@ -58,8 +67,16 @@ function validPeople(authors: Author[] = []): Author[] {
 
 function personHarvard(a: Author): string {
   if (a.isOrganisation) return clean(a.family);
-  const fam = clean(a.family);
-  const ini = initialsNoStops(a.given);
+  const fam = clean(a.family).normalize('NFC');
+  const givenClean = clean(a.given).normalize('NFC');
+  // Vietnamese names: use full given name (not initials) and strip diacritics to plain ASCII.
+  const isVietnamese = VI_NAME_RE.test(fam) || VI_NAME_RE.test(givenClean);
+  if (isVietnamese) {
+    const famAscii = asciiName(fam);
+    const givenAscii = asciiName(givenClean);
+    return givenAscii ? `${famAscii} ${givenAscii}` : famAscii;
+  }
+  const ini = initialsNoStops(givenClean);
   return ini ? `${fam} ${ini}` : fam;
 }
 
@@ -152,7 +169,7 @@ function dayMonthYear(day: string, month: string, year: string): string {
   const m = normaliseMonth(month);
   const d = normaliseDay(day);
   if (d && m && y) return `${d} ${m} ${y}`;
-  if (m && y) return `${m} ${y}`;
+  // Month without a specific day is ambiguous — show year only.
   return y;
 }
 

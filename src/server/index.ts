@@ -73,6 +73,33 @@ app.post('/api/extract', async (req: Request<unknown, unknown, ExtractBody>, res
     const { html, finalUrl } = await fetchHtml(parsed.toString());
     const extractionStyle = style === 'apa7' || style === 'harvard' || style === 'ieee' ? style : undefined;
     const { data, guessedType } = await extractMetadata(html, finalUrl || parsed.toString(), extractionStyle);
+
+    // If HTML extraction found a DOI, enrich with CrossRef for authoritative metadata.
+    // CrossRef wins for academic fields (title/authors/journal/volume/issue/pages/doi/date);
+    // original page URL and access date are kept from the HTML extraction.
+    if (data.doi) {
+      const pageUrl = String(data.url || '');
+      const origAccessDate = String(data.accessDate || '');
+      const origSiteName = String(data.siteName || '');
+      const enriched = await lookupReferenceIdentifier({ kind: 'doi', value: String(data.doi), fromUrl: false });
+      if (enriched) {
+        const CROSSREF_FIELDS: (keyof typeof data)[] = [
+          'title', 'authors', 'year', 'month', 'day',
+          'journal', 'volume', 'issue', 'pages', 'doi',
+          'articleNumber', 'publisher', 'editors', 'place', 'bookTitle',
+        ];
+        for (const field of CROSSREF_FIELDS) {
+          const v = enriched.data[field];
+          const empty = v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+          if (!empty) (data as Record<string, unknown>)[field] = v;
+        }
+        if (pageUrl) data.url = pageUrl;
+        if (origAccessDate) data.accessDate = origAccessDate;
+        if (origSiteName) data.siteName = origSiteName;
+        return res.json({ ok: true, data, guessedType: enriched.guessedType, doiEnriched: true });
+      }
+    }
+
     return res.json({ ok: true, data, guessedType });
   } catch (err: unknown) {
     const e = err as { status?: number; code?: string; message?: string };
