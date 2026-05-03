@@ -26,14 +26,6 @@ import type {
  * STATE
  * ============================================================ */
 
-interface AppState {
-  style: CitationStyle;
-  source: SourceType;
-  data: CitationData;
-  detectedSource: SourceType | null;
-  doiEnriched: boolean;
-}
-
 function emptyData(): CitationData {
   return {
     authors: [{ family: '', given: '' }],
@@ -90,12 +82,24 @@ function emptyData(): CitationData {
   };
 }
 
+interface AppState {
+  style: CitationStyle;
+  source: SourceType;
+  data: CitationData;
+  detectedSource: SourceType | null;
+  doiEnriched: boolean;
+  pickerOpen: boolean;
+  hasUserChosenSource: boolean;
+}
+
 const state: AppState = {
   style: 'apa7',
   source: 'webpage',
   data: emptyData(),
   detectedSource: null,
   doiEnriched: false,
+  pickerOpen: false,
+  hasUserChosenSource: false,
 };
 
 /* ============================================================
@@ -171,10 +175,46 @@ function renderStyleBar(): void {
  * RENDER SOURCE TABS
  * ============================================================ */
 
-function renderSourceTabs(): void {
-  const tabs = $('sourceTabs');
-  tabs.innerHTML = '';
-  (Object.keys(SOURCE_TYPE_LABELS) as SourceType[]).forEach((t) => {
+function renderSourcePicker(): void {
+  const picker = $('sourcePicker');
+  const trigger = $('sourcePickerTrigger') as HTMLButtonElement;
+  const labelEl = $('sourcePickerLabel');
+  const dotEl = $('sourcePickerDot');
+  const list = $('sourcePickerList');
+
+  // --- Trigger pill state ---
+  const showDetected = state.detectedSource !== null;
+  if (showDetected) {
+    labelEl.textContent = SOURCE_TYPE_LABELS[state.source];
+    dotEl.hidden = false;
+    dotEl.className =
+      'source-picker__dot' + (state.doiEnriched ? ' source-picker__dot--verified' : '');
+    dotEl.setAttribute(
+      'data-tooltip',
+      state.doiEnriched
+        ? 'Đã xác minh CrossRef — metadata chính thống'
+        : 'Tự động nhận diện từ URL'
+    );
+    trigger.title = 'Click để đổi loại nguồn';
+  } else if (state.hasUserChosenSource) {
+    labelEl.textContent = SOURCE_TYPE_LABELS[state.source];
+    dotEl.hidden = true;
+    dotEl.removeAttribute('data-tooltip');
+    trigger.title = 'Click để đổi loại nguồn';
+  } else {
+    labelEl.textContent = 'Tags';
+    dotEl.hidden = true;
+    dotEl.removeAttribute('data-tooltip');
+    trigger.title = 'Dán URL/DOI để tự nhận diện, hoặc click để chọn thủ công';
+  }
+
+  picker.dataset.detected = String(showDetected);
+  picker.dataset.open = String(state.pickerOpen);
+  trigger.setAttribute('aria-expanded', String(state.pickerOpen));
+
+  // --- Tag list (rebuilt only when needed) ---
+  list.innerHTML = '';
+  (Object.keys(SOURCE_TYPE_LABELS) as SourceType[]).forEach((t, idx) => {
     const isActive = state.source === t;
     const isDetected = state.detectedSource === t;
     const classes = ['source-tab'];
@@ -184,18 +224,19 @@ function renderSourceTabs(): void {
     const attrs: Record<string, string | EventListener> = {
       class: classes.join(' '),
       type: 'button',
+      role: 'option',
+      'aria-selected': String(isActive),
+      style: `--idx:${idx}`,
       onclick: () => {
         state.source = t;
-        renderSourceTabs();
+        state.hasUserChosenSource = true;
+        state.pickerOpen = false;
+        renderSourcePicker();
         renderForm();
-        regenerate();
+        void regenerate();
+        ($('sourcePickerTrigger') as HTMLButtonElement).focus();
       },
     };
-    if (isDetected) {
-      attrs.title = state.doiEnriched
-        ? 'Auto-detected from URL — verified via CrossRef'
-        : 'Auto-detected from URL';
-    }
 
     const children: Array<Node | string> = [];
     if (isDetected) {
@@ -205,8 +246,32 @@ function renderSourceTabs(): void {
     }
     children.push(SOURCE_TYPE_LABELS[t]);
 
-    const btn = el('button', attrs, ...children);
-    tabs.appendChild(btn);
+    list.appendChild(el('button', attrs, ...children));
+  });
+}
+
+function toggleSourcePicker(open?: boolean): void {
+  state.pickerOpen = typeof open === 'boolean' ? open : !state.pickerOpen;
+  renderSourcePicker();
+}
+
+function bindSourcePickerInteractions(): void {
+  const trigger = $('sourcePickerTrigger');
+  trigger.addEventListener('click', () => toggleSourcePicker());
+
+  document.addEventListener('click', (e) => {
+    if (!state.pickerOpen) return;
+    const target = e.target as Node;
+    if (!$('sourcePicker').contains(target)) toggleSourcePicker(false);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!state.pickerOpen) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      toggleSourcePicker(false);
+      (trigger as HTMLButtonElement).focus();
+    }
   });
 }
 
@@ -439,7 +504,13 @@ async function handleFetch(): Promise<void> {
       state.source = result.guessedType;
       state.detectedSource = result.guessedType;
       state.doiEnriched = Boolean(result.doiEnriched);
-      renderSourceTabs();
+      state.hasUserChosenSource = false;
+      // Trigger pill pop-in animation
+      $('sourcePicker').dataset.justDetected = 'true';
+      window.setTimeout(() => {
+        $('sourcePicker').dataset.justDetected = 'false';
+      }, 600);
+      renderSourcePicker();
     }
 
     renderForm();
@@ -512,7 +583,8 @@ async function copyHtmlAndText(elementId: string): Promise<void> {
 
 function init(): void {
   renderStyleBar();
-  renderSourceTabs();
+  renderSourcePicker();
+  bindSourcePickerInteractions();
   renderForm();
 
   $('fetchBtn').addEventListener('click', () => void handleFetch());
@@ -529,9 +601,11 @@ function init(): void {
     state.data = emptyData();
     state.detectedSource = null;
     state.doiEnriched = false;
+    state.hasUserChosenSource = false;
+    state.pickerOpen = false;
     ($('urlInput') as HTMLInputElement).value = '';
     clearStatus();
-    renderSourceTabs();
+    renderSourcePicker();
     renderForm();
     void regenerate();
   });

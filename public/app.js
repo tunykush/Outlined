@@ -229,7 +229,9 @@
     source: "webpage",
     data: emptyData(),
     detectedSource: null,
-    doiEnriched: false
+    doiEnriched: false,
+    pickerOpen: false,
+    hasUserChosenSource: false
   };
   function $(id) {
     const el2 = document.getElementById(id);
@@ -286,10 +288,38 @@
       bar.appendChild(btn);
     });
   }
-  function renderSourceTabs() {
-    const tabs = $("sourceTabs");
-    tabs.innerHTML = "";
-    Object.keys(SOURCE_TYPE_LABELS).forEach((t) => {
+  function renderSourcePicker() {
+    const picker = $("sourcePicker");
+    const trigger = $("sourcePickerTrigger");
+    const labelEl = $("sourcePickerLabel");
+    const dotEl = $("sourcePickerDot");
+    const list = $("sourcePickerList");
+    const showDetected = state.detectedSource !== null;
+    if (showDetected) {
+      labelEl.textContent = SOURCE_TYPE_LABELS[state.source];
+      dotEl.hidden = false;
+      dotEl.className = "source-picker__dot" + (state.doiEnriched ? " source-picker__dot--verified" : "");
+      dotEl.setAttribute(
+        "data-tooltip",
+        state.doiEnriched ? "\u0110\xE3 x\xE1c minh CrossRef \u2014 metadata ch\xEDnh th\u1ED1ng" : "T\u1EF1 \u0111\u1ED9ng nh\u1EADn di\u1EC7n t\u1EEB URL"
+      );
+      trigger.title = "Click \u0111\u1EC3 \u0111\u1ED5i lo\u1EA1i ngu\u1ED3n";
+    } else if (state.hasUserChosenSource) {
+      labelEl.textContent = SOURCE_TYPE_LABELS[state.source];
+      dotEl.hidden = true;
+      dotEl.removeAttribute("data-tooltip");
+      trigger.title = "Click \u0111\u1EC3 \u0111\u1ED5i lo\u1EA1i ngu\u1ED3n";
+    } else {
+      labelEl.textContent = "Tags";
+      dotEl.hidden = true;
+      dotEl.removeAttribute("data-tooltip");
+      trigger.title = "D\xE1n URL/DOI \u0111\u1EC3 t\u1EF1 nh\u1EADn di\u1EC7n, ho\u1EB7c click \u0111\u1EC3 ch\u1ECDn th\u1EE7 c\xF4ng";
+    }
+    picker.dataset.detected = String(showDetected);
+    picker.dataset.open = String(state.pickerOpen);
+    trigger.setAttribute("aria-expanded", String(state.pickerOpen));
+    list.innerHTML = "";
+    Object.keys(SOURCE_TYPE_LABELS).forEach((t, idx) => {
       const isActive = state.source === t;
       const isDetected = state.detectedSource === t;
       const classes = ["source-tab"];
@@ -300,24 +330,50 @@
       const attrs = {
         class: classes.join(" "),
         type: "button",
+        role: "option",
+        "aria-selected": String(isActive),
+        style: `--idx:${idx}`,
         onclick: () => {
           state.source = t;
-          renderSourceTabs();
+          state.hasUserChosenSource = true;
+          state.pickerOpen = false;
+          renderSourcePicker();
           renderForm();
-          regenerate();
+          void regenerate();
+          $("sourcePickerTrigger").focus();
         }
       };
-      if (isDetected) {
-        attrs.title = state.doiEnriched ? "Auto-detected from URL \u2014 verified via CrossRef" : "Auto-detected from URL";
-      }
       const children = [];
       if (isDetected) {
         const dotClass = "source-tab__dot" + (state.doiEnriched ? " source-tab__dot--verified" : "");
         children.push(el("span", { class: dotClass, "aria-hidden": "true" }));
       }
       children.push(SOURCE_TYPE_LABELS[t]);
-      const btn = el("button", attrs, ...children);
-      tabs.appendChild(btn);
+      list.appendChild(el("button", attrs, ...children));
+    });
+  }
+  function toggleSourcePicker(open) {
+    state.pickerOpen = typeof open === "boolean" ? open : !state.pickerOpen;
+    renderSourcePicker();
+  }
+  function bindSourcePickerInteractions() {
+    const trigger = $("sourcePickerTrigger");
+    trigger.addEventListener("click", () => toggleSourcePicker());
+    document.addEventListener("click", (e) => {
+      if (!state.pickerOpen)
+        return;
+      const target = e.target;
+      if (!$("sourcePicker").contains(target))
+        toggleSourcePicker(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (!state.pickerOpen)
+        return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        toggleSourcePicker(false);
+        trigger.focus();
+      }
     });
   }
   function renderForm() {
@@ -519,7 +575,12 @@
         state.source = result.guessedType;
         state.detectedSource = result.guessedType;
         state.doiEnriched = Boolean(result.doiEnriched);
-        renderSourceTabs();
+        state.hasUserChosenSource = false;
+        $("sourcePicker").dataset.justDetected = "true";
+        window.setTimeout(() => {
+          $("sourcePicker").dataset.justDetected = "false";
+        }, 600);
+        renderSourcePicker();
       }
       renderForm();
       void regenerate();
@@ -584,7 +645,8 @@
   }
   function init() {
     renderStyleBar();
-    renderSourceTabs();
+    renderSourcePicker();
+    bindSourcePickerInteractions();
     renderForm();
     $("fetchBtn").addEventListener("click", () => void handleFetch());
     $("urlInput").addEventListener("keydown", (e) => {
@@ -598,9 +660,11 @@
       state.data = emptyData();
       state.detectedSource = null;
       state.doiEnriched = false;
+      state.hasUserChosenSource = false;
+      state.pickerOpen = false;
       $("urlInput").value = "";
       clearStatus();
-      renderSourceTabs();
+      renderSourcePicker();
       renderForm();
       void regenerate();
     });
