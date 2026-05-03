@@ -189,23 +189,12 @@ function renderSourcePicker(): void {
     dotEl.hidden = false;
     dotEl.className =
       'source-picker__dot' + (state.doiEnriched ? ' source-picker__dot--verified' : '');
-    dotEl.setAttribute(
-      'data-tooltip',
-      state.doiEnriched
-        ? 'Đã xác minh CrossRef — metadata chính thống'
-        : 'Tự động nhận diện từ URL'
-    );
-    trigger.title = 'Click để đổi loại nguồn';
   } else if (state.hasUserChosenSource) {
     labelEl.textContent = SOURCE_TYPE_LABELS[state.source];
     dotEl.hidden = true;
-    dotEl.removeAttribute('data-tooltip');
-    trigger.title = 'Click để đổi loại nguồn';
   } else {
     labelEl.textContent = 'Tags';
     dotEl.hidden = true;
-    dotEl.removeAttribute('data-tooltip');
-    trigger.title = 'Dán URL/DOI để tự nhận diện, hoặc click để chọn thủ công';
   }
 
   picker.dataset.detected = String(showDetected);

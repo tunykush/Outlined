@@ -299,21 +299,12 @@
       labelEl.textContent = SOURCE_TYPE_LABELS[state.source];
       dotEl.hidden = false;
       dotEl.className = "source-picker__dot" + (state.doiEnriched ? " source-picker__dot--verified" : "");
-      dotEl.setAttribute(
-        "data-tooltip",
-        state.doiEnriched ? "\u0110\xE3 x\xE1c minh CrossRef \u2014 metadata ch\xEDnh th\u1ED1ng" : "T\u1EF1 \u0111\u1ED9ng nh\u1EADn di\u1EC7n t\u1EEB URL"
-      );
-      trigger.title = "Click \u0111\u1EC3 \u0111\u1ED5i lo\u1EA1i ngu\u1ED3n";
     } else if (state.hasUserChosenSource) {
       labelEl.textContent = SOURCE_TYPE_LABELS[state.source];
       dotEl.hidden = true;
-      dotEl.removeAttribute("data-tooltip");
-      trigger.title = "Click \u0111\u1EC3 \u0111\u1ED5i lo\u1EA1i ngu\u1ED3n";
     } else {
       labelEl.textContent = "Tags";
       dotEl.hidden = true;
-      dotEl.removeAttribute("data-tooltip");
-      trigger.title = "D\xE1n URL/DOI \u0111\u1EC3 t\u1EF1 nh\u1EADn di\u1EC7n, ho\u1EB7c click \u0111\u1EC3 ch\u1ECDn th\u1EE7 c\xF4ng";
     }
     picker.dataset.detected = String(showDetected);
     picker.dataset.open = String(state.pickerOpen);
