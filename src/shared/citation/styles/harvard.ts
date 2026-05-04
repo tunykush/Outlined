@@ -222,36 +222,94 @@ function edn(edition: string): string {
   return `${e} edn`;
 }
 
-function domainPrefixUpper(url: string): string {
+function domainPrefix(url: string): string {
   if (!url) return '';
-  // Regex-based hostname extraction — robust across runtimes that don't expose
-  // a global URL constructor (e.g. our smoke tests run inside vm.runInNewContext).
   const m = url.match(/^[a-z]+:\/\/(?:www\.)?([^/:?#]+)/i);
   if (!m) return '';
-  const first = m[1].split('.')[0] || '';
-  return first.toUpperCase();
+  return (m[1].split('.')[0] || '').toLowerCase();
 }
 
 function hasNonAscii(s: string): boolean {
   return /[^\x00-\x7F]/.test(s);
 }
 
-function websiteName(d: CitationData): string {
-  let raw = clean(d.siteName || d.publisher || d.platform);
-  // Vietnamese (or other non-ASCII) site names render poorly in Harvard output and
-  // typically have a well-known shorthand matching the domain prefix
-  // (e.g. "Báo Công an Nhân dân" → cand.com.vn → "CAND"). Prefer the upper-cased
-  // domain prefix in that case.
-  if (raw && hasNonAscii(raw)) {
-    const fallback = domainPrefixUpper(d.url);
-    if (fallback) raw = fallback;
+function isAllUpperLatin(s: string): boolean {
+  let hasLetter = false;
+  for (const c of s) {
+    if (/[a-z]/.test(c)) return false;
+    if (/[A-Z]/.test(c)) hasLetter = true;
   }
+  return hasLetter;
+}
+
+function toTitleCase(s: string): string {
+  return s.toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase());
+}
+
+// Trim trailing generic publication suffixes that don't belong in the rendered
+// site name ("Tuoi Tre Online" → "Tuoi Tre"). Vietnamese mastheads frequently
+// add "Online", "Điện Tử", "Báo" — strip those last words for cleaner output.
+const SITE_SUFFIX_RE = /\s+(?:online|news|newspaper|daily|magazine|edition|tv|báo|bao|điện\s*tử|dien\s*tu|website)$/i;
+function stripSiteSuffix(s: string): string {
+  let prev = s;
+  for (let i = 0; i < 3; i++) {
+    const next = prev.replace(SITE_SUFFIX_RE, '').trim();
+    if (next === prev) break;
+    prev = next;
+  }
+  return prev;
+}
+
+/**
+ * Normalise a raw site/publisher name into Harvard-friendly form.
+ *
+ * Rules, applied in order, all derived from observed user feedback rather
+ * than per-site hardcoding:
+ *   1. Non-ASCII names with a SHORT domain prefix (≤ 4 chars) collapse to
+ *      the uppercased prefix — the prefix is almost always the well-known
+ *      acronym (cand.com.vn → CAND, vov.gov.vn → VOV).
+ *   2. Non-ASCII names with a LONGER prefix lose their diacritics
+ *      (Tuổi Trẻ → Tuoi Tre) — readable Latin form keeping word structure.
+ *   3. ALL-CAPS names get Title Case (TUOI TRE ONLINE → Tuoi Tre Online)
+ *      — most VN news sites force masthead caps in og:site_name.
+ *   4. Trailing generic publication suffixes (Online / Báo / Điện Tử …)
+ *      are stripped (Tuoi Tre Online → Tuoi Tre).
+ */
+function normaliseSiteName(raw: string, url: string): string {
   if (!raw) return '';
-  // RMIT Harvard examples sometimes use the domain itself as the website name.
-  if (/\.[a-z]{2,}(?:\.[a-z]{2,})?$/i.test(raw)) {
-    return /\bwebsite\b/i.test(raw) ? raw : `${raw} website`;
+  let name = raw;
+  // True when the name has been resolved to a short domain acronym (e.g. CAND);
+  // we keep that intact and skip the all-caps→Title-Case downstream rule.
+  let isAcronymForm = false;
+
+  if (hasNonAscii(name)) {
+    const prefix = domainPrefix(url);
+    if (prefix && prefix.length <= 4) {
+      name = prefix.toUpperCase();
+      isAcronymForm = true;
+    } else {
+      name = name.normalize('NFD').replace(COMBINING_RE, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+    }
   }
-  return /\bwebsite\b/i.test(raw) ? raw : `${raw} website`;
+
+  // Only Title-Case all-caps strings that are clearly NOT acronyms.
+  // Heuristic: short single-word ALL CAPS (≤ 4 chars) is almost always an
+  // acronym worth preserving (PRSA, ERM, BBC, CNN, NASA). Longer single
+  // words and any multi-word ALL CAPS (TUOI TRE ONLINE) are masthead-style
+  // formatting and should be Title-Cased to read naturally.
+  if (!isAcronymForm && isAllUpperLatin(name)) {
+    const isMultiWord = /\s/.test(name);
+    if (isMultiWord || name.length >= 5) name = toTitleCase(name);
+  }
+  name = stripSiteSuffix(name);
+  return name;
+}
+
+function websiteName(d: CitationData): string {
+  const raw = clean(d.siteName || d.publisher || d.platform);
+  const normalised = normaliseSiteName(raw, d.url);
+  if (!normalised) return '';
+  return /\bwebsite\b/i.test(normalised) ? normalised : `${normalised} website`;
 }
 
 function refLead(d: CitationData, titleHtmlForNoAuthor: string, date = dateYear(d)): { lead: string; omittedTitle: boolean } {

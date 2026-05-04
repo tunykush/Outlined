@@ -236,7 +236,11 @@ function isWeakMachineTitle(title: string, baseUrl: string): boolean {
 }
 
 function cleanTitle(rawTitle: string, siteName: string, baseUrl: string): string {
-  let title = rawTitle.replace(/\s+/g, ' ').trim();
+  // Many CMS templates emit decomposed Unicode (NFD), which renders as visually
+  // detached combining marks ("râ´t phô´ biê´n") in fonts that don't compose them
+  // at draw-time. Always coerce to NFC so the title displays as proper Vietnamese
+  // ("rất phổ biến").
+  let title = rawTitle.normalize('NFC').replace(/\s+/g, ' ').trim();
   if (!title) return '';
   const host = hostnameOf(baseUrl);
   const pathTitle = titleFromUrlPath(baseUrl);
@@ -861,23 +865,43 @@ export async function extractMetadata(html: string, baseUrl: string, style?: Cit
   // Authors — pass Readability byline so NER fallback has article-body text to work with
   data.authors = await extractAuthors($, jsonld, rdbl.byline);
 
-  // Reconcile authors against the site name. Many CMS templates expose the
-  // site title in meta[name="author"] (so "Creative Flair" ends up looking
-  // like a person), and Readability sometimes mistakes a brand byline for an
-  // author. If a candidate person's full name matches the site name, the
-  // author IS the site — promote it to an organisation so it renders intact
-  // ("Creative Flair") instead of being abbreviated to "Flair C".
-  if (data.siteName && Array.isArray(data.authors) && data.authors.length > 0) {
-    const siteSlug = String(data.siteName).replace(/\s+/g, '').toLowerCase();
-    data.authors = data.authors.map((a) => {
-      if (a.isOrganisation) return a;
+  // Reconcile authors against the site brand and host. News and blog templates
+  // routinely contaminate meta[name="author"] with: the site brand itself
+  // ("TUOI TRE ONLINE"), staff handles built from the domain ("baotuoitre"),
+  // or the brand spelled with diacritics ("Tuổi Trẻ"). The principle:
+  //
+  //   • An "author" whose ASCII slug equals the site name OR contains the
+  //     host's domain prefix (≥ 4 chars to avoid false positives like "blog")
+  //     is brand noise, not a person.
+  //   • If at least one real person was extracted, DROP every brand-like
+  //     entry — the human is the author and the brand becomes the publisher.
+  //   • If only brand entries were extracted (no person), KEEP the brand but
+  //     PROMOTE it to a single organisation author so it renders intact
+  //     ("Creative Flair", not "Flair C").
+  if (Array.isArray(data.authors) && data.authors.length > 0) {
+    const siteSlug = data.siteName ? String(data.siteName).replace(/\s+/g, '').toLowerCase() : '';
+    const hostPrefix = (host.split('.')[0] || '').toLowerCase();
+    const isLongPrefix = hostPrefix.length >= 4;
+
+    const tagged = data.authors.map((a) => {
       const fwd = `${a.family || ''}${a.given || ''}`.replace(/\s+/g, '').toLowerCase();
       const rev = `${a.given || ''}${a.family || ''}`.replace(/\s+/g, '').toLowerCase();
-      if (siteSlug && (fwd === siteSlug || rev === siteSlug)) {
-        return { family: String(data.siteName), given: '', isOrganisation: true };
-      }
-      return a;
+      const fwdAscii = fwd.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
+      const matchesSite = siteSlug && (fwd === siteSlug || rev === siteSlug);
+      const matchesHost = isLongPrefix && fwdAscii.includes(hostPrefix);
+      return { author: a, isBrand: Boolean(matchesSite || matchesHost) };
     });
+
+    const personEntries = tagged.filter((t) => !t.isBrand && !t.author.isOrganisation);
+    const hasPerson = personEntries.length > 0;
+
+    if (hasPerson) {
+      // Real human(s) present → drop every brand-like entry.
+      data.authors = tagged.filter((t) => !t.isBrand).map((t) => t.author);
+    } else if (data.siteName && tagged.some((t) => t.isBrand)) {
+      // Only brand entries — collapse to a single organisation author.
+      data.authors = [{ family: String(data.siteName), given: '', isOrganisation: true }];
+    }
   }
 
   // URL & canonical

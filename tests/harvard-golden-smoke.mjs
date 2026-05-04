@@ -169,7 +169,24 @@ const fixtures = [
       accessDate: '4 May 2026',
       url: 'https://tuoitre.vn/hai-doc-thoai-dung-tuc-gay-tranh-cai-va-rat-pho-bien-759063.htm',
     },
-    expected: 'Ha Son (2015) Hài độc thoại: rất phổ biến nhưng gây tranh cãi, TUOITRE website, accessed 4 May 2026. https://tuoitre.vn/hai-doc-thoai-dung-tuc-gay-tranh-cai-va-rat-pho-bien-759063.htm',
+    expected: 'Ha Son (2015) Hài độc thoại: rất phổ biến nhưng gây tranh cãi, Tuoi Tre website, accessed 4 May 2026. https://tuoitre.vn/hai-doc-thoai-dung-tuc-gay-tranh-cai-va-rat-pho-bien-759063.htm',
+  },
+  {
+    // Acronym preservation: short domain prefix (≤4 chars) for non-ASCII site
+    // names is intentionally kept upper-case (well-known abbreviation pattern).
+    name: 'Vietnamese site with short domain prefix collapses to upper acronym',
+    source: 'webpage',
+    data: {
+      ...base,
+      authors: [{ family: 'Trần', given: 'Mỹ Hiền' }],
+      year: '2021',
+      title: 'Khi sân khấu săn tiểu phẩm hài để tồn tại',
+      siteName: 'Báo Công an Nhân dân điện tử',
+      publisher: 'Báo Công an Nhân dân điện tử',
+      accessDate: '4 May 2026',
+      url: 'https://cand.com.vn/dien-dan-van-nghe-cong-an/Khi-san-khau-i602445/',
+    },
+    expected: 'Tran My Hien (2021) Khi sân khấu săn tiểu phẩm hài để tồn tại, CAND website, accessed 4 May 2026. https://cand.com.vn/dien-dan-van-nghe-cong-an/Khi-san-khau-i602445/',
   },
   {
     name: 'No-date webpage from uploaded Harvard reference list',
