@@ -22,12 +22,38 @@ interface ExtractionResult {
 
 /* ---------- helpers ---------- */
 
+/**
+ * Decode numeric character references that survived HTML parsing.
+ *
+ * Some sites (especially CMS-generated VN news pages) double-encode their
+ * meta tags: the file contains literal "Ti&#7870;n V&#361;" rather than
+ * the actual Unicode chars. Cheerio leaves those numeric references intact
+ * because they are valid escape sequences inside an attribute value, not
+ * malformed HTML. We decode them ourselves so downstream code sees the
+ * real Vietnamese text ("Tiến Vũ") and Vietnamese-detection regexes fire.
+ *
+ * Result is normalised to NFC so combining marks are recomposed.
+ */
+function decodeNumericEntities(s: string): string {
+  if (!s || s.indexOf('&') < 0) return s;
+  const decoded = s
+    .replace(/&#(\d+);/g, (_, dec) => {
+      const cp = Number(dec);
+      return cp >= 0x20 && cp <= 0x10ffff ? String.fromCodePoint(cp) : '';
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      const cp = parseInt(hex, 16);
+      return cp >= 0x20 && cp <= 0x10ffff ? String.fromCodePoint(cp) : '';
+    });
+  return decoded.normalize('NFC');
+}
+
 function metaContent($: CheerioAPI, selectors: string[]): string {
   for (const sel of selectors) {
     const el = $(sel).first();
     if (el.length) {
       const c = el.attr('content') || el.attr('value') || el.text();
-      if (c && c.trim()) return c.trim();
+      if (c && c.trim()) return decodeNumericEntities(c.trim());
     }
   }
   return '';
@@ -37,7 +63,7 @@ function metaContentAll($: CheerioAPI, selector: string): string[] {
   const out: string[] = [];
   $(selector).each((_, el) => {
     const c = $(el).attr('content');
-    if (c && c.trim()) out.push(c.trim());
+    if (c && c.trim()) out.push(decodeNumericEntities(c.trim()));
   });
   return out;
 }
@@ -67,6 +93,10 @@ interface JsonLdNode {
   isPartOf?: { name?: string } | string;
   mainEntityOfPage?: string | { '@id'?: string };
   url?: string;
+  // DOI / identifier surfaces — appear on ScholarlyArticle, Book, Dataset
+  identifier?: string | string[] | { '@type'?: string; propertyID?: string; value?: string } | Array<{ '@type'?: string; propertyID?: string; value?: string }>;
+  sameAs?: string | string[];
+  doi?: string;
   // Journal-specific
   isPartOfPeriodical?: { name?: string };
   volumeNumber?: string;
@@ -146,8 +176,14 @@ function maybeNormalizeCaps(s: string): string {
 
 /** Split a "First Last" or "Last, First" name string into Author */
 function splitName(raw: string): Author {
+  // Defense in depth: decode any surviving numeric character references before
+  // splitting. Author candidates reach this function from many extraction
+  // paths (meta tags, JSON-LD, Readability byline, visible DOM scan, NER) and
+  // double-encoded entities ("Ti&#7870;n") slip through some of them. Decoding
+  // here covers every path with a single guard.
+  const decoded = decodeNumericEntities(raw);
   // Normalize input to NFC so VI_DIACRITIC_RE reliably matches precomposed Vietnamese chars.
-  const s = maybeNormalizeCaps(raw.trim().normalize('NFC').replace(/\s+/g, ' '));
+  const s = maybeNormalizeCaps(decoded.trim().normalize('NFC').replace(/\s+/g, ' '));
   if (!s) return { family: '', given: '' };
   if (s.includes(',')) {
     const [fam, giv] = s.split(',', 2).map((x) => x.trim());
@@ -236,11 +272,11 @@ function isWeakMachineTitle(title: string, baseUrl: string): boolean {
 }
 
 function cleanTitle(rawTitle: string, siteName: string, baseUrl: string): string {
-  // Many CMS templates emit decomposed Unicode (NFD), which renders as visually
-  // detached combining marks ("râ´t phô´ biê´n") in fonts that don't compose them
-  // at draw-time. Always coerce to NFC so the title displays as proper Vietnamese
-  // ("rất phổ biến").
-  let title = rawTitle.normalize('NFC').replace(/\s+/g, ' ').trim();
+  // Decode any surviving numeric character references first ("H&#224;i" → "Hài").
+  // Then coerce to NFC: many CMS templates emit decomposed Unicode (NFD), which
+  // renders as visually detached combining marks ("râ´t phô´ biê´n") in fonts
+  // that don't compose them at draw-time.
+  let title = decodeNumericEntities(rawTitle).normalize('NFC').replace(/\s+/g, ' ').trim();
   if (!title) return '';
   const host = hostnameOf(baseUrl);
   const pathTitle = titleFromUrlPath(baseUrl);
@@ -407,7 +443,7 @@ function shouldIgnoreAuthor(raw: string): boolean {
 }
 
 function cleanBylineName(raw: string): string {
-  return raw
+  return decodeNumericEntities(raw)
     .replace(/\bby\b\s*/i, '')
     .replace(/\b(written|posted|published)\s+by\b\s*/i, '')
     .replace(/\b(APR|PhD|Ph\.D\.?|MBA|MA|MSc|Dr\.?|Prof\.?|Professor)\b\.?/gi, '')
@@ -765,6 +801,112 @@ function guessType(
   return 'webpage';
 }
 
+/* ---------- DOI scanning ----------
+ *
+ * DOIs are the gold standard for academic citations: once we have one, the
+ * existing CrossRef enrichment flow (in src/server/index.ts) will replace any
+ * heuristic metadata with publisher-registered fields, giving 99%+ accuracy.
+ *
+ * The challenge is that DOIs hide in 5+ different places across publisher
+ * sites — many don't expose <meta name="citation_doi">. This scanner walks
+ * each surface in priority order and returns the first valid DOI it finds.
+ *
+ * Format spec: "10." + 4-9 digits + "/" + path. Pattern from CrossRef:
+ *   10\.\d{4,9}/[-._;()/:A-Z0-9]+
+ */
+const DOI_REGEX = /10\.\d{4,9}\/[-._;()/:A-Z0-9]+/i;
+
+/** Strip a DOI from any wrapping (URL prefix, "doi:" prefix, trailing junk). */
+function normaliseDoi(raw: string): string {
+  if (!raw) return '';
+  const m = raw.match(DOI_REGEX);
+  if (!m) return '';
+  // Trim trailing punctuation that text scrapes commonly leave on the tail.
+  return m[0].replace(/[.,;:)\]]+$/, '');
+}
+
+/** Recursively walk a JSON-LD identifier field; it may be string, object, or array. */
+function doiFromJsonLdIdentifier(id: unknown): string {
+  if (!id) return '';
+  if (typeof id === 'string') return normaliseDoi(id);
+  if (Array.isArray(id)) {
+    for (const item of id) {
+      const found = doiFromJsonLdIdentifier(item);
+      if (found) return found;
+    }
+    return '';
+  }
+  if (typeof id === 'object') {
+    const obj = id as { propertyID?: string; '@type'?: string; value?: string; name?: string };
+    const isDoiProp =
+      /doi/i.test(obj.propertyID || '') ||
+      /doi/i.test(obj['@type'] || '') ||
+      /doi/i.test(obj.name || '');
+    if (isDoiProp && obj.value) return normaliseDoi(obj.value);
+    // Sometimes the value alone is a DOI even without property hint
+    if (obj.value) {
+      const guess = normaliseDoi(obj.value);
+      if (guess) return guess;
+    }
+  }
+  return '';
+}
+
+/** Pull DOI from JSON-LD article / book / scholarly nodes (identifier, sameAs, doi, url). */
+function doiFromJsonLd(jsonld: ReturnType<typeof parseJsonLd>): string {
+  const candidates = [jsonld.article, jsonld.newsArticle, jsonld.book, jsonld.product].filter(Boolean) as JsonLdNode[];
+  for (const node of candidates) {
+    const fromIdentifier = doiFromJsonLdIdentifier(node.identifier);
+    if (fromIdentifier) return fromIdentifier;
+    const fromDoi = node.doi ? normaliseDoi(node.doi) : '';
+    if (fromDoi) return fromDoi;
+    const sameAs = node.sameAs;
+    if (sameAs) {
+      const arr = Array.isArray(sameAs) ? sameAs : [sameAs];
+      for (const s of arr) {
+        const found = normaliseDoi(s);
+        if (found) return found;
+      }
+    }
+    const fromUrl = node.url ? normaliseDoi(node.url) : '';
+    if (fromUrl) return fromUrl;
+  }
+  return '';
+}
+
+/** Pull DOI from any anchor pointing at doi.org (covers <a href="https://doi.org/..."> patterns). */
+function doiFromAnchors($: CheerioAPI): string {
+  let found = '';
+  $('a[href*="doi.org"]').each((_, el) => {
+    if (found) return;
+    const href = $(el).attr('href') || '';
+    const v = normaliseDoi(href);
+    if (v) found = v;
+  });
+  return found;
+}
+
+/** Pull DOI from visible body text. Skips scripts/styles. Searches for the
+ *  first DOI-shaped substring in the article content. */
+function doiFromBodyText($: CheerioAPI): string {
+  const $body = $('body').clone();
+  $body.find('script, style, noscript, head').remove();
+  const text = $body.text();
+  if (!text) return '';
+  // Look for DOI within ~200 chars of a "DOI" / "doi:" / "https://doi.org/" cue
+  // before falling back to a global scan — reduces false positives from
+  // unrelated 10.xxxx numbers that happen to match the pattern.
+  const cued = text.match(/(?:doi[:\s]*|doi\.org\/)\s*(10\.\d{4,9}\/[-._;()/:A-Z0-9]+)/i);
+  if (cued) return normaliseDoi(cued[1]);
+  return normaliseDoi(text);
+}
+
+/** Pull DOI from the page URL itself (some publishers route doi.org redirects through their CDN). */
+function doiFromUrl(url: string): string {
+  if (!url) return '';
+  return normaliseDoi(url);
+}
+
 /* ---------- main extractor ---------- */
 
 export async function extractMetadata(html: string, baseUrl: string, style?: CitationStyle): Promise<ExtractionResult> {
@@ -922,13 +1064,28 @@ export async function extractMetadata(html: string, baseUrl: string, style?: Cit
   const firstPage = metaContent($, ['meta[name="citation_firstpage"]', 'meta[name="prism.startingPage"]']);
   const lastPage = metaContent($, ['meta[name="citation_lastpage"]', 'meta[name="prism.endingPage"]']);
   data.pages = firstPage && lastPage ? `${firstPage}-${lastPage}` : firstPage;
-  data.doi = metaContent($, [
+  // DOI — multi-layer scan in priority order. Once any layer produces a DOI,
+  // the CrossRef enrichment in /api/extract will rewrite the metadata with
+  // publisher-registered fields, so finding a DOI is the single biggest win
+  // for academic citation accuracy. Layers (most → least authoritative):
+  //   1. citation_* meta tags (publisher-curated, machine-readable)
+  //   2. JSON-LD identifier / sameAs / url on Article-class nodes
+  //   3. anchor links to doi.org
+  //   4. visible body text with "doi:" / "doi.org/" cue
+  //   5. the page URL itself (some publishers serve doi.org redirects)
+  const doiFromMeta = metaContent($, [
     'meta[name="citation_doi"]',
     'meta[name="prism.doi"]',
     'meta[name="dc.identifier.doi"]',
-  ])
-    .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')
-    .replace(/^doi:\s*/i, '');
+    'meta[name="dc.identifier"]',
+    'meta[name="DC.identifier"]',
+  ]);
+  data.doi =
+    normaliseDoi(doiFromMeta) ||
+    doiFromJsonLd(jsonld) ||
+    doiFromAnchors($) ||
+    doiFromBodyText($) ||
+    doiFromUrl(baseUrl);
   data.articleNumber = metaContent($, [
     'meta[name="citation_article_number"]',
     'meta[name="citation_arxiv_id"]',

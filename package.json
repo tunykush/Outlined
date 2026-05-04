@@ -15,7 +15,9 @@
     "test:harvard": "node tests/harvard-golden-smoke.mjs && tsx tests/harvard-metascan-smoke.ts",
     "test:apa": "tsx tests/style-golden-smoke.ts && tsx tests/apa-metascan-smoke.ts",
     "test:reference": "tsx tests/reference-lookup-smoke.ts",
-    "test:styles": "tsx tests/style-golden-smoke.ts"
+    "test:styles": "tsx tests/style-golden-smoke.ts",
+    "test:doi": "tsx tests/extractor-doi-smoke.ts",
+    "test:entities": "tsx tests/extractor-entities-smoke.ts"
   },
   "engines": {
     "node": ">=18.0.0"
