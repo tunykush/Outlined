@@ -128,7 +128,7 @@ function parseJsonLd($: CheerioAPI): {
  * Presence → the name follows Vietnamese word order (family name FIRST).
  */
 const VI_DIACRITIC_RE =
-  /[ắằẳẵặấầẩẫậẻẽẹềếểễệịỉĩọỏồốổỗộờớởỡợụủũừứửữựỳỷỹỵđ]/i;
+  /[ăắằẳẵặâấầẩẫậẻẽẹêếềểễệịỉĩọỏôốồổỗộơớờởỡợụủũưứừửữựỳỷỹỵđ]/i;
 
 /**
  * Normalize an ALL-CAPS string to Title Case.
@@ -860,6 +860,25 @@ export async function extractMetadata(html: string, baseUrl: string, style?: Cit
 
   // Authors — pass Readability byline so NER fallback has article-body text to work with
   data.authors = await extractAuthors($, jsonld, rdbl.byline);
+
+  // Reconcile authors against the site name. Many CMS templates expose the
+  // site title in meta[name="author"] (so "Creative Flair" ends up looking
+  // like a person), and Readability sometimes mistakes a brand byline for an
+  // author. If a candidate person's full name matches the site name, the
+  // author IS the site — promote it to an organisation so it renders intact
+  // ("Creative Flair") instead of being abbreviated to "Flair C".
+  if (data.siteName && Array.isArray(data.authors) && data.authors.length > 0) {
+    const siteSlug = String(data.siteName).replace(/\s+/g, '').toLowerCase();
+    data.authors = data.authors.map((a) => {
+      if (a.isOrganisation) return a;
+      const fwd = `${a.family || ''}${a.given || ''}`.replace(/\s+/g, '').toLowerCase();
+      const rev = `${a.given || ''}${a.family || ''}`.replace(/\s+/g, '').toLowerCase();
+      if (siteSlug && (fwd === siteSlug || rev === siteSlug)) {
+        return { family: String(data.siteName), given: '', isOrganisation: true };
+      }
+      return a;
+    });
+  }
 
   // URL & canonical
   data.url = pickFirst(

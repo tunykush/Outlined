@@ -248,6 +248,26 @@ export function normalizeCitationData(style: CitationStyle, source: SourceType, 
   if (d.siteName) d.siteName = cleanCompoundSiteName(d.siteName, d.url);
   if (d.publisher) d.publisher = cleanCompoundSiteName(d.publisher, d.url);
 
+  // If a "person" author's full name (in either order) matches the site name,
+  // they are not a person — they are the site/brand acting as organisational
+  // author (common on blogs and CMS templates that copy site_name into
+  // meta[name="author"]). Promote so styles render the brand intact instead
+  // of reducing it to "LastName Initials". Skips authors already flagged.
+  if (d.siteName && Array.isArray(d.authors)) {
+    const siteSlug = d.siteName.replace(/\s+/g, '').toLowerCase();
+    if (siteSlug) {
+      d.authors = d.authors.map((a) => {
+        if (a.isOrganisation) return a;
+        const fwd = `${a.family || ''}${a.given || ''}`.replace(/\s+/g, '').toLowerCase();
+        const rev = `${a.given || ''}${a.family || ''}`.replace(/\s+/g, '').toLowerCase();
+        if (fwd === siteSlug || rev === siteSlug) {
+          return { family: d.siteName, given: '', isOrganisation: true };
+        }
+        return a;
+      });
+    }
+  }
+
   // DOI beats URL for journal articles in both uploaded style guides.
   if (source === 'journal' && d.doi) d.url = d.url && /^https?:\/\/(?:dx\.)?doi\.org\//i.test(d.url) ? '' : d.url;
 

@@ -155,6 +155,23 @@ const fixtures = [
     expected: 'Creative Flair (2024) The Effects of Art and Culture on Todays Modern Society, Creative Flair website, accessed 5 September 2024. https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/',
   },
   {
+    // Regression: VI_NAME_RE used to miss bare horn/breve/circumflex chars
+    // (ơ ư ă â ê ô), so "Hà Sơn" would render as "Hà S" (initials).
+    name: 'Vietnamese name with bare horn renders as full ASCII name',
+    source: 'webpage',
+    data: {
+      ...base,
+      authors: [{ family: 'Hà', given: 'Sơn' }],
+      year: '2015',
+      title: 'Hài độc thoại: rất phổ biến nhưng gây tranh cãi',
+      siteName: 'Tuổi Trẻ Online',
+      publisher: 'Tuổi Trẻ Online',
+      accessDate: '4 May 2026',
+      url: 'https://tuoitre.vn/hai-doc-thoai-dung-tuc-gay-tranh-cai-va-rat-pho-bien-759063.htm',
+    },
+    expected: 'Ha Son (2015) Hài độc thoại: rất phổ biến nhưng gây tranh cãi, TUOITRE website, accessed 4 May 2026. https://tuoitre.vn/hai-doc-thoai-dung-tuc-gay-tranh-cai-va-rat-pho-bien-759063.htm',
+  },
+  {
     name: 'No-date webpage from uploaded Harvard reference list',
     source: 'webpage',
     data: {

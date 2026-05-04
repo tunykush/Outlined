@@ -155,6 +155,26 @@ const fixtures: Fixture[] = [
     expected: 'Creative Flair (2024) The Effects of Art and Culture on Todays Modern Society, Creative Flair website, accessed 5 September 2024. https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/',
   },
   {
+    // Regression: extractor used to mis-parse the site brand as a person name
+    // when meta[name="author"] = the site title — "Creative Flair" became
+    // {family: "Flair", given: "Creative"} → "Flair C". Normalize now promotes
+    // any person whose full name matches siteName back to an organisation so
+    // the brand renders intact.
+    name: 'RMIT Harvard promotes brand-as-author back to organisation',
+    style: 'harvard',
+    source: 'webpage',
+    data: {
+      authors: [{ family: 'Flair', given: 'Creative' }],
+      year: '2024',
+      title: 'The Effects of Art and Culture on Todays Modern Society',
+      siteName: 'Creative Flair',
+      publisher: 'Creative Flair',
+      accessDate: '5 September 2024',
+      url: 'https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/',
+    },
+    expected: 'Creative Flair (2024) The Effects of Art and Culture on Todays Modern Society, Creative Flair website, accessed 5 September 2024. https://blog.creativeflair.org/the-effects-of-art-and-culture-on-todays-modern-society/',
+  },
+  {
     name: 'RMIT Harvard book without place does not invent n.p.',
     style: 'harvard',
     source: 'book',

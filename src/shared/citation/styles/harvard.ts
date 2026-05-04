@@ -6,7 +6,11 @@
 
 import type { Author, CitationData, CitationOutput, SourceType } from '../../types.js';
 
-const VI_NAME_RE = /[ắằẳẵặấầẩẫậẻẽẹềếểễệịỉĩọỏồốổỗộờớởỡợụủũừứửữựỳỷỹỵđ]/i;
+// Chars that strongly indicate a Vietnamese name. Includes the bare
+// horn/breve/circumflex letters (ă â ê ô ơ ư) — these don't appear in other
+// major Latin scripts, so finding any one of them is sufficient signal to
+// switch to Vietnamese formatting (full given name, no initials).
+const VI_NAME_RE = /[ăắằẳẵặâấầẩẫậẻẽẹêếềểễệịỉĩọỏôốồổỗộơớờởỡợụủũưứừửữựỳỷỹỵđ]/i;
 
 /** Strip Vietnamese (and other) diacritics → plain ASCII for citation output. */
 // eslint-disable-next-line no-misleading-character-class
@@ -219,13 +223,13 @@ function edn(edition: string): string {
 }
 
 function domainPrefixUpper(url: string): string {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, '');
-    const first = host.split('.')[0] || '';
-    return first.toUpperCase();
-  } catch {
-    return '';
-  }
+  if (!url) return '';
+  // Regex-based hostname extraction — robust across runtimes that don't expose
+  // a global URL constructor (e.g. our smoke tests run inside vm.runInNewContext).
+  const m = url.match(/^[a-z]+:\/\/(?:www\.)?([^/:?#]+)/i);
+  if (!m) return '';
+  const first = m[1].split('.')[0] || '';
+  return first.toUpperCase();
 }
 
 function hasNonAscii(s: string): boolean {
